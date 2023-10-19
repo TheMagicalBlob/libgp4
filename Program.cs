@@ -5,10 +5,20 @@ using System.Linq;
 using System.Text;
 using System.Xml;
 
-namespace libgp4 { // ver 0.1.0
-    public partial class GP4Reader {
+namespace libgp4 { // ver 0.1.1
+    public class GP4Reader {
 
+        public GP4Reader(string gp4_path) {
+            gp4 = XmlReader.Create(gp4_path);
+        }
+
+        private XmlReader gp4;
+
+        public void Read(string Attribute) {
+            Output.Out(gp4.GetAttribute(Attribute));
+        }
     }
+
 
     public partial class GP4Creator {
 
@@ -40,8 +50,7 @@ namespace libgp4 { // ver 0.1.0
         private readonly string[] required_sfo_variables = new string[] { "APP_VER", "CATEGORY", "CONTENT_ID", "TITLE_ID", "VERSION" };
 
 
-        private byte[] buffer, outputBuffer;
-        private int outputPosition = 0, outputReadPosition = 0;
+        private byte[] buffer;
         private TimeSpan internal_timestamp;
 
 
@@ -68,23 +77,23 @@ namespace libgp4 { // ver 0.1.0
                 return $"Could Not Find The Game Data Directory \"{gamedata_folder}\"";
 
             if(!Directory.Exists(gp4_output_directory)) {
-                Out($"Could Not Find The Selected .gp4 Output Directory\n({gp4_output_directory})");
+                Output.Out($"Could Not Find The Selected .gp4 Output Directory\n({gp4_output_directory})");
                 gp4_output_directory = gamedata_folder.Remove(gamedata_folder.LastIndexOf(@"\"));
-                Out($".gp4 Will Be Placed In {gp4_output_directory}");
+                Output.Out($".gp4 Will Be Placed In {gp4_output_directory}");
             }
             if(category == "gp" && !File.Exists(pkg_source)) {
                 if(pkg_source == null)
-                    Out("No Base Game Source .pkg Path Given For Patch .gp4, Using .pkg Name Default\n(.gp4 Will Expect Base Game .pkg To Be In The Same Directory As The .gp4)");
+                    Output.Out("No Base Game Source .pkg Path Given For Patch .gp4, Using .pkg Name Default\n(.gp4 Will Expect Base Game .pkg To Be In The Same Directory As The .gp4)");
 
-                Out("Invalid Source .pkg Path Given, File Does Not Exist, Make Sure This Is Fixed Before .pkg Creation");
+                Output.Out("Invalid Source .pkg Path Given, File Does Not Exist, Make Sure This Is Fixed Before .pkg Creation");
             }
 
             gp4_output_directory = gamedata_folder.Remove(gamedata_folder.LastIndexOf(@"\"));
 
-            Out("Starting .gp4 Creation");
-            Out($"Passcode: {passcode}");
-            Out($".gp4 Output Directory: {gp4_output_directory}");
-            Out($"Source .pkg Path: {pkg_source}");
+            Output.Out("Starting .gp4 Creation");
+            Output.Out($"Passcode: {passcode}");
+            Output.Out($".gp4 Output Directory: {gp4_output_directory}");
+            Output.Out($"Source .pkg Path: {pkg_source}");
 
             return BeginGP4BuildProcess(gamedata_folder, passcode, gp4_output_directory, pkg_source);
         }
@@ -170,7 +179,7 @@ namespace libgp4 { // ver 0.1.0
             foreach(var blacklisted_file_or_folder in blacklist)
                 if(filepath.Contains(blacklisted_file_or_folder)) {
 #if DEBUG
-                    Out($"Ignoring: {filepath}");
+                    Output.Out($"Ignoring: {filepath}");
 #endif
                     return true;
                 }
@@ -179,7 +188,7 @@ namespace libgp4 { // ver 0.1.0
                 foreach(var blacklisted_file_or_folder in user_blacklist) {
                     if(filepath.Contains(blacklisted_file_or_folder)) {
 #if DEBUG
-                        Out($"User Ignoring: {filepath}");
+                        Output.Out($"User Ignoring: {filepath}");
 #endif
                         return true;
                     }
@@ -409,10 +418,15 @@ namespace libgp4 { // ver 0.1.0
             }
         }
         #endregion
+    }
 
+    public static class Output {
+
+        private static byte[] outputBuffer;
+        private static int outputPosition = 0, outputReadPosition = 0;
 
         /// <summary> Output Method </summary>
-        private void Out(object o) {
+        public static void Out(object o) {
             string s = o as string;
             var temp = outputBuffer;
 
@@ -427,7 +441,7 @@ namespace libgp4 { // ver 0.1.0
         /// <summary> Read A String From The Application Output And Advance (basic poc, will improve later)
         /// </summary>
         /// <returns> The Current Output String </returns>
-        public string OutputTest() {
+        public static string OutputTest() {
             var newString = new StringBuilder();
             var stringLen = 0;
 
@@ -441,4 +455,5 @@ namespace libgp4 { // ver 0.1.0
             return newString.ToString();
         }
     }
+
 }
