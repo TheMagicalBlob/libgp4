@@ -14,6 +14,9 @@ namespace libgp4 { // ver 0.1.1
 
         private XmlReader gp4;
 
+        public void Read() {
+            Output.Out(gp4.GetAttribute("psproject"));
+        }
         public void Read(string Attribute) {
             Output.Out(gp4.GetAttribute(Attribute));
         }
