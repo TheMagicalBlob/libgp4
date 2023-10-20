@@ -8,12 +8,9 @@ using System.Windows.Forms;
 /// <summary>
 /// A Smalated To .pkg Creation, And A Build Function
 /// </summary>
-namespace libgp4 { // ver 0.2.3
+namespace libgp4 { // ver 0.2.5
+    public class GP4Reader {
 
-
-    /*
-       public class GP4Reader {
-        
         public GP4Reader(string gp4_path) {
             using(Stream gp4_file = new FileStream(gp4_path, FileMode.Open, FileAccess.ReadWrite)) {
                 while(gp4_file.ReadByte() != 0x3D) { }
@@ -39,8 +36,6 @@ namespace libgp4 { // ver 0.2.3
             return gp4.NodeType;
         }
     }
-    */
-
 
     /// <summary>
     /// A Small Class For Building With A Few Options Related To .pkg Creation, And A Build Function
@@ -55,6 +50,7 @@ namespace libgp4 { // ver 0.2.3
             Passcode = "00000000000000000000000000000000";
             gp4_declaration = gp4.CreateXmlDeclaration("1.1", "utf-8", "yes");
         }
+
 
 
         /////////////////\\\\\\\\\\\\\\\\
@@ -181,11 +177,14 @@ namespace libgp4 { // ver 0.2.3
                     WLog("Invalid Source .pkg Path Given, File Does Not Exist, Make Sure This Is Fixed Before .pkg Creation");
             }
 
-            string[] file_paths = GetProjectFilePaths(gamedata_folder);
+
+            string[] file_paths
+                = // Look Ma, No Indendtation Issues
+            GetProjectFilePaths(gamedata_folder);
+
 
             // Create Elements
             CreateBaseElements(category, gp4_timestamp, content_id, Passcode, SourcePkgPath, app_ver, version, chunk_count, scenario_count);
-
             CreateChunksElement(chunk_labels, chunk_count);
             CreateFilesElement(file_paths, gamedata_folder);
             CreateScenariosElement(scenario_labels);
@@ -193,107 +192,6 @@ namespace libgp4 { // ver 0.2.3
 
             return $"GP4 Creation Successful, Time Taken: {WriteElementsToGP4(internal_gp4_timestamp).Subtract(internal_gp4_timestamp)}".TrimEnd('0');
         }
-
-        /// <summary> Returns A String Array Containing The Paths For Every File In The Selected Gamedata Folder
-        ///</summary>
-        private string[] GetProjectFilePaths(string gamedata_folder) {
-            DirectoryInfo directoryInfo = new DirectoryInfo(gamedata_folder);
-            FileInfo[] file_info = directoryInfo.GetFiles(".", SearchOption.AllDirectories);
-
-            string[] file_paths = new string[file_info.Length];
-            for(index = 0; index < file_info.Length; index++)
-                file_paths[index] = file_info[index].FullName;
-
-            return file_paths;
-        }
-
-        /// <summary> Check A Blacklist And User Blacklist And Exclude Any Files Who's Paths Contain A Blacklisted String
-        ///</summary>
-        /// <returns> True If The File in filepath Shouldn't Be Included In The .gp4 </returns>
-        private bool FileShouldBeExcluded(string filepath) {
-            string filename = string.Empty;
-            if(filepath.Contains('.'))
-                filename = filepath.Remove(filepath.LastIndexOf(".")).Substring(filepath.LastIndexOf('\\') + 1);
-
-            string[] blacklist = new string[] {
-                  // Drunk Canadian Guy
-                    "right.sprx",
-                    $"{(IgnoreKeystone ? @"sce_sys\keystone" : "@@")}",
-                    "sce_discmap.plt",
-                    @"sce_sys\playgo-chunk",
-                    @"sce_sys\psreserved.dat",
-                    $@"sce_sys\{filename}.dds",
-                    @"sce_sys\playgo-manifest.xml",
-                    @"sce_sys\origin-deltainfo.dat",
-                  // Al Azif
-                    @"sce_sys\.metas",
-                    @"sce_sys\.digests",
-                    @"sce_sys\.image_key",
-                    @"sce_sys\license.dat",
-                    @"sce_sys\.entry_keys",
-                    @"sce_sys\.entry_names",
-                    @"sce_sys\license.info",
-                    @"sce_sys\selfinfo.dat",
-                    @"sce_sys\imageinfo.dat",
-                    @"sce_sys\.unknown_0x21",
-                    @"sce_sys\.unknown_0xC0",
-                    @"sce_sys\pubtoolinfo.dat",
-                    @"sce_sys\app\playgo-chunk",
-                    @"sce_sys\.general_digests",
-                    @"sce_sys\target-deltainfo.dat",
-                    @"sce_sys\app\playgo-manifest.xml"
-                };
-
-            foreach(var blacklisted_file_or_folder in blacklist)
-                if(filepath.Contains(blacklisted_file_or_folder)) {
-#if DEBUG
-                    WLog($"Ignoring: {filepath}");
-#endif
-                    return true;
-                }
-
-            if(UserBlacklist != null)
-                foreach(var blacklisted_file_or_folder in UserBlacklist) {
-                    if(filepath.Contains(blacklisted_file_or_folder)) {
-#if DEBUG
-                        WLog($"User Ignoring: {filepath}");
-#endif
-                        return true;
-                    }
-                }
-            return false;
-        }
-        private bool SkipCompression(string filepath) {
-            string[] Blacklist = new string[] {
-                "sce_sys",
-                "sce_module",
-                ".txt",
-                ".elf",
-                ".bin",
-                ".prx",
-                ".dll"
-            };
-
-            foreach(var file in Blacklist)
-                if(filepath.Contains(file))
-                    return true;
-
-            return false;
-        }
-        private bool SkipChunkAttribute(string filepath) {
-            string[] Blacklist = new string[] {
-                "sce_sys",
-                "sce_module",
-                ".bin"
-            };
-
-            foreach(var file in Blacklist)
-                if(filepath.Contains(file))
-                    return true;
-
-            return false;
-        }
-
 
         /// <summary> Parse playgo-chunks.dat And Param.sfo To Get Most Variables <br/><br/>
         /// chunk_count <br/>
@@ -472,7 +370,7 @@ namespace libgp4 { // ver 0.2.3
 
 
         /// <summary> Parses A Byte Array And Converts Data To A String Array, With Strings Seperated By Null Bytes
-        /// </summary>
+        ///</summary>
         /// <param name="StringArray"> The Array To Write To, Already Initialized Before Calling This </param>
         private void ConvertbufferToStringArray(string[] StringArray) {
             int byteIndex = 0;
@@ -488,6 +386,109 @@ namespace libgp4 { // ver 0.2.3
                 StringArray[index] = Builder.ToString();
             }
         }
+
+        /// <summary> Returns A String Array Containing The Paths For Every File In The Selected Gamedata Folder
+        ///</summary>
+        private string[] GetProjectFilePaths(string gamedata_folder) {
+            DirectoryInfo directoryInfo = new DirectoryInfo(gamedata_folder);
+            FileInfo[] file_info = directoryInfo.GetFiles(".", SearchOption.AllDirectories);
+
+            string[] file_paths = new string[file_info.Length];
+            for(index = 0; index < file_info.Length; index++)
+                file_paths[index] = file_info[index].FullName;
+
+            return file_paths;
+        }
+
+        /// <summary> Check A Blacklist And User Blacklist And Exclude Any Files Who's Paths Contain A Blacklisted String
+        ///</summary>
+        /// <returns> True If The File in filepath Shouldn't Be Included In The .gp4 </returns>
+        private bool FileShouldBeExcluded(string filepath) {
+            string filename = string.Empty;
+            if(filepath.Contains('.'))
+                filename = filepath.Remove(filepath.LastIndexOf(".")).Substring(filepath.LastIndexOf('\\') + 1);
+
+            string[] blacklist = new string[] {
+                  // Drunk Canadian Guy
+                    "right.sprx",
+                    $"{(IgnoreKeystone ? @"sce_sys\keystone" : "@@")}",
+                    "sce_discmap.plt",
+                    @"sce_sys\playgo-chunk",
+                    @"sce_sys\psreserved.dat",
+                    $@"sce_sys\{filename}.dds",
+                    @"sce_sys\playgo-manifest.xml",
+                    @"sce_sys\origin-deltainfo.dat",
+                  // Al Azif
+                    @"sce_sys\.metas",
+                    @"sce_sys\.digests",
+                    @"sce_sys\.image_key",
+                    @"sce_sys\license.dat",
+                    @"sce_sys\.entry_keys",
+                    @"sce_sys\.entry_names",
+                    @"sce_sys\license.info",
+                    @"sce_sys\selfinfo.dat",
+                    @"sce_sys\imageinfo.dat",
+                    @"sce_sys\.unknown_0x21",
+                    @"sce_sys\.unknown_0xC0",
+                    @"sce_sys\pubtoolinfo.dat",
+                    @"sce_sys\app\playgo-chunk",
+                    @"sce_sys\.general_digests",
+                    @"sce_sys\target-deltainfo.dat",
+                    @"sce_sys\app\playgo-manifest.xml"
+                };
+
+            foreach(var blacklisted_file_or_folder in blacklist)
+                if(filepath.Contains(blacklisted_file_or_folder)) {
+#if DEBUG
+                    WLog($"Ignoring: {filepath}");
+#endif
+                    return true;
+                }
+
+            if(UserBlacklist != null)
+                foreach(var blacklisted_file_or_folder in UserBlacklist) {
+                    if(filepath.Contains(blacklisted_file_or_folder)) {
+#if DEBUG
+                        WLog($"User Ignoring: {filepath}");
+#endif
+                        return true;
+                    }
+                }
+            return false;
+        }
+
+        private bool SkipCompression(string filepath) {
+            string[] Blacklist = new string[] {
+                "sce_sys",
+                "sce_module",
+                ".txt",
+                ".elf",
+                ".bin",
+                ".prx",
+                ".dll"
+            };
+
+            foreach(var file in Blacklist)
+                if(filepath.Contains(file))
+                    return true;
+
+            return false;
+        }
+
+        private bool SkipChunkAttribute(string filepath) {
+            string[] Blacklist = new string[] {
+                "sce_sys",
+                "sce_module",
+                ".bin"
+            };
+
+            foreach(var file in Blacklist)
+                if(filepath.Contains(file))
+                    return true;
+
+            return false;
+        }
+
         #endregion
     }
 }

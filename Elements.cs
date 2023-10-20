@@ -33,7 +33,7 @@ namespace libgp4 {
         /////////////////////\\\\\\\\\\\\\\\\\\\
 
         /// <summary> Create Base .gp4 Elements
-        /// </summary>
+        ///</summary>
         private void CreateBaseElements(string category, string timestamp, string content_id, string passcode, string pkg_source, string app_ver, string version, int chunk_count, int scenario_count) {
             psproject = gp4.CreateElement("psproject");
             psproject.SetAttribute("fmt", "gp4");
@@ -95,24 +95,25 @@ namespace libgp4 {
         /// </summary>
         private void CreateFilesElement(string[] file_paths, string gamedata_folder) {
             files = gp4.CreateElement("files");
-            for(index = 0; index < file_paths.Length; index++) {
-                if(FileShouldBeExcluded(file_paths[index])) goto Skip;
-                file = gp4.CreateElement("file");
-                file.SetAttribute("targ_path", (file_paths[index].Replace(gamedata_folder + "\\", string.Empty)).Replace('\\', '/'));
-                file.SetAttribute("orig_path", file_paths[index]);
-                if(!SkipCompression(file_paths[index]))
-                    file.SetAttribute("pfs_compression", "enable");
-                if(!SkipChunkAttribute(file_paths[index]))
-                    file.SetAttribute("chunks", $"0-{chunk_count - 1}");
-                files.AppendChild(file);
-            Skip: { }
-            }
+
+            for(index = 0; index < file_paths.Length; index++)
+                if(!FileShouldBeExcluded(file_paths[index])) {
+                    file = gp4.CreateElement("file");
+                    file.SetAttribute("targ_path", (file_paths[index].Replace(gamedata_folder + "\\", string.Empty)).Replace('\\', '/'));
+                    file.SetAttribute("orig_path", file_paths[index]);
+                    if(!SkipCompression(file_paths[index]))
+                        file.SetAttribute("pfs_compression", "enable");
+                    if(!SkipChunkAttribute(file_paths[index]))
+                        file.SetAttribute("chunks", $"0-{chunk_count - 1}");
+                    files.AppendChild(file);
+                }
         }
 
         /// <summary> Create "chunks" Element
         /// </summary>
         private void CreateChunksElement(string[] chunk_labels, int chunk_count) {
             chunks = gp4.CreateElement("chunks");
+
             for(int chunk_id = 0; chunk_id < chunk_count; chunk_id++) {
                 chunk = gp4.CreateElement("chunk");
                 chunk.SetAttribute("id", $"{chunk_id}");
@@ -144,7 +145,7 @@ namespace libgp4 {
 
 
         /// <summary> Build .gp4 Structure And Save To File
-        /// </summary>
+        ///</summary>
         /// <returns> Time Taken For Build Process </returns>
         public TimeSpan WriteElementsToGP4(TimeSpan internal_timestamp) {
             gp4.AppendChild(gp4_declaration);
