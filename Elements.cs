@@ -1,7 +1,6 @@
 ﻿using libgp4;
 using System;
 using System.IO;
-using System.Linq;
 using System.Xml;
 
 namespace libgp4 {
@@ -58,7 +57,7 @@ namespace libgp4 {
             package.SetAttribute("app_type", "full");
 
             if(category == "gp")
-            package.SetAttribute("app_path", $"{(pkg_source == "" ? $"{content_id}-A{app_ver.Replace(".", "")}-V{version.Replace(".", "")}.pkg" : pkg_source)}");
+                package.SetAttribute("app_path", $"{(pkg_source == "" ? $"{content_id}-A{app_ver.Replace(".", "")}-V{version.Replace(".", "")}.pkg" : pkg_source)}");
 
             chunk_info = gp4.CreateElement("chunk_info");
             chunk_info.SetAttribute("chunk_count", $"{chunk_count}");
@@ -147,7 +146,7 @@ namespace libgp4 {
         /// <summary> Build .gp4 Structure And Save To File
         /// </summary>
         /// <returns> Time Taken For Build Process </returns>
-        public TimeSpan SaveElements(string gp4_output_directory, TimeSpan internal_timestamp) {
+        public TimeSpan WriteElementsToGP4(TimeSpan internal_timestamp) {
             gp4.AppendChild(gp4_declaration);
             gp4.AppendChild(psproject);
             psproject.AppendChild(volume);
@@ -164,10 +163,6 @@ namespace libgp4 {
             var NewTime = new TimeSpan(DateTime.Now.Day, DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second, DateTime.Now.Millisecond);
             var stamp = gp4.CreateComment($"gengp4.exe Alternative. Time Taken For Build Process: {NewTime.Subtract(internal_timestamp)}");
             gp4.AppendChild(stamp);
-
-            var newGP4Path = $@"{gp4_output_directory}\{title_id}-{(category == "gd" ? "app" : "patch")}.gp4";
-            gp4.Save(newGP4Path);
-
             return NewTime;
         }
     }

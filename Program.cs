@@ -1,11 +1,15 @@
-﻿using Microsoft.SqlServer.Server;
-using System;
+﻿using System;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Xml;
+using System.Windows.Forms;
 
+/// <summary>
+/// A Smalated To .pkg Creation, And A Build Function
+/// </summary>
 namespace libgp4 { // ver 0.2.3
+
 
     /*
        public class GP4Reader {
@@ -67,6 +71,8 @@ namespace libgp4 { // ver 0.2.3
         /// <summary> Necessary Variably For Patch .pkg Creation. <br/>
         /// Path Of The Base Game Pkg You're Going To Install The </summary>
         public string SourcePkgPath;
+        /// <summary> Text Box Control To Use As A Log For The Creation Process </summary>
+        public RichTextBox OutputTextBox;
 
 
         ///////////////\\\\\\\\\\\\\\\
@@ -88,16 +94,38 @@ namespace libgp4 { // ver 0.2.3
         ///--     User Functions     --\\\
         /////////////////\\\\\\\\\\\\\\\\\
 
-        /// <summary> Build A Base Game .gp4 With A Default Passcode, Outputting The .gp4 Right Outside The Gamedata Folder </summary>
+        /// <summary> Build A Base Game .gp4 With The Current Settings </summary>
         /// <returns> Success/Failure Status </returns>
         public string BuildGP4() {
-            var gp4_output_directory = gamedata_folder.Remove(gamedata_folder.LastIndexOf(@"\"));
-            return GP4Sart(gamedata_folder, Passcode, SourcePkgPath, gp4_output_directory);
+            return GP4Sart(gamedata_folder, Passcode, SourcePkgPath);
         }
 
-        /// <summary> Build A Base Game .gp4 With A Default Passcode, Outputting The .gp4 Right Outside The Gamedata Folder </summary>
+        /// <summary> Build A Base Game .gp4 With The Current Settings, And Save It To The Specified Directory </summary>
         /// <returns> Success/Failure Status </returns>
-        public string BuildGP4(string gp4_output_directory) { return GP4Sart(gamedata_folder, Passcode, SourcePkgPath, gp4_output_directory); }
+        public string BuildGP4(string gp4_output_directory) {
+            var Result = GP4Sart(gamedata_folder, Passcode, SourcePkgPath);
+            var newGP4Path = $@"{gp4_output_directory}\{title_id}-{(category == "gd" ? "app" : "patch")}.gp4";
+            gp4.Save(newGP4Path);
+            WLog($".gp4 Saved In {newGP4Path}");
+            return Result;
+        }
+
+        /// <summary> Save The .gp4 To gp4_output_directory
+        ///</summary>
+        public void SaveGP4(string gp4_output_directory) {
+            var newGP4Path = $@"{gp4_output_directory}\{title_id}-{(category == "gd" ? "app" : "patch")}.gp4";
+            gp4.Save(newGP4Path);
+            WLog($".gp4 Saved In {newGP4Path}");
+        }
+
+        /// <summary> Save The .gp4 To The Gamedata FOlder's Parent Folder
+        ///</summary>
+        public void SaveGP4() {
+            var gp4_output_directory = gamedata_folder.Remove(gamedata_folder.LastIndexOf(@"\"));
+            var newGP4Path = $@"{gp4_output_directory}\{title_id}-{(category == "gd" ? "app" : "patch")}.gp4";
+            gp4.Save(newGP4Path);
+            WLog($".gp4 Saved In {newGP4Path}");
+        }
         #endregion
 
 
@@ -107,28 +135,25 @@ namespace libgp4 { // ver 0.2.3
         ///////////////////////\\\\\\\\\\\\\\\\\\\\\\\
         ///--     Main Application Functions     --\\\
         ///////////////////////\\\\\\\\\\\\\\\\\\\\\\\
-        
+
+        /// <summary> Output Log Messages To A Specified RichTextBox Control, And/Or To The Console If Applicable </summary>
+        private void WLog(object o) {
+            string s = o as string;
+
+            Console.WriteLine(s);
+
+            OutputTextBox?.AppendText($"{s}\n");
+            OutputTextBox?.ScrollToCaret();
+        }
+
         /// <summary> Build A Base Game .gp4 With A Default Passcode, Outputting The .gp4 To 
         ///</summary>
-        /// <param name="gp4_output_directory"> Directory To Place The Finished .gp4 File </param>
         /// <returns> Success/Failure Status </returns>
-        private string GP4Sart(string gamedata_folder, string Passcode, string SourcePkgPath, string gp4_output_directory) {
+        private string GP4Sart(string gamedata_folder, string Passcode, string SourcePkgPath) {
 
-            // Do A Few Pre-Build Checks
             if(!Directory.Exists(gamedata_folder))
                 return $"Could Not Find The Game Data Directory \"{gamedata_folder}\"";
 
-            if(!Directory.Exists(gp4_output_directory)) {
-                WriteLog($"Could Not Find The Selected .gp4 Output Directory\n({gp4_output_directory})");
-                gp4_output_directory = gamedata_folder.Remove(gamedata_folder.LastIndexOf(@"\"));
-                WriteLog($".gp4 Will Be Placed In {gp4_output_directory}");
-            }
-            if(category == "gp" && !File.Exists(SourcePkgPath)) {
-                if(SourcePkgPath == null)
-                    WriteLog("No Base Game Source .pkg Path Given For Patch .gp4, Using .pkg Name Default\n(.gp4 Will Expect Base Game .pkg To Be In The Same Directory As The .gp4)");
-                else
-                    WriteLog("Invalid Source .pkg Path Given, File Does Not Exist, Make Sure This Is Fixed Before .pkg Creation");
-            }
 
             // Timestamp For GP4, Same Format Sony Used Though Sony's Technically Only Tracks The Date,
             // With The Time Left As 00:00, But Imma Just Add The Time. It Doesn't Break Anything).
@@ -138,14 +163,23 @@ namespace libgp4 { // ver 0.2.3
             var internal_gp4_timestamp = new TimeSpan(DateTime.Now.Day, DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second, DateTime.Now.Millisecond);
 
 
-            WriteLog("Starting .gp4 Creation");
-            WriteLog($"Passcode: {Passcode}");
-            WriteLog($".gp4 Output Directory: {gp4_output_directory}");
-            WriteLog($"Source .pkg Path: {SourcePkgPath}");
+            WLog("Starting .gp4 Creation");
+            WLog($"Passcode: {Passcode}");
+            WLog($"Source .pkg Path: {SourcePkgPath}");
 
             // Get Necessary .gp4 Variables
             ParsePlaygoChunks(gamedata_folder);
+            var ID1 = content_id;
             ParseSFO(gamedata_folder);
+            if(ID1 != content_id)
+                return $"Content ID Mismatch Detected, Process Aborted\n.dat: {ID1} | .sfo: {content_id}";
+
+            if(category == "gp" && !File.Exists(SourcePkgPath)) {
+                if(SourcePkgPath == null)
+                    WLog("No Base Game Source .pkg Path Given For Patch .gp4, Using .pkg Name Default\n(.gp4 Will Expect Base Game .pkg To Be In The Same Directory As The .gp4)");
+                else
+                    WLog("Invalid Source .pkg Path Given, File Does Not Exist, Make Sure This Is Fixed Before .pkg Creation");
+            }
 
             string[] file_paths = GetProjectFilePaths(gamedata_folder);
 
@@ -157,7 +191,7 @@ namespace libgp4 { // ver 0.2.3
             CreateScenariosElement(scenario_labels);
             CreateRootDirectoryElement(gamedata_folder);
 
-            return $"GP4 Creation Successful, Time Taken: {SaveElements(gp4_output_directory, internal_gp4_timestamp).Subtract(internal_gp4_timestamp)}".TrimEnd('0');
+            return $"GP4 Creation Successful, Time Taken: {WriteElementsToGP4(internal_gp4_timestamp).Subtract(internal_gp4_timestamp)}".TrimEnd('0');
         }
 
         /// <summary> Returns A String Array Containing The Paths For Every File In The Selected Gamedata Folder
@@ -213,7 +247,7 @@ namespace libgp4 { // ver 0.2.3
             foreach(var blacklisted_file_or_folder in blacklist)
                 if(filepath.Contains(blacklisted_file_or_folder)) {
 #if DEBUG
-                    WriteLog($"Ignoring: {filepath}");
+                    WLog($"Ignoring: {filepath}");
 #endif
                     return true;
                 }
@@ -222,7 +256,7 @@ namespace libgp4 { // ver 0.2.3
                 foreach(var blacklisted_file_or_folder in UserBlacklist) {
                     if(filepath.Contains(blacklisted_file_or_folder)) {
 #if DEBUG
-                        WriteLog($"User Ignoring: {filepath}");
+                        WLog($"User Ignoring: {filepath}");
 #endif
                         return true;
                     }
@@ -455,39 +489,5 @@ namespace libgp4 { // ver 0.2.3
             }
         }
         #endregion
-
-
-        private static byte[] outputBuffer;
-        private static int outputPosition = 0, outputReadPosition = 0;
-
-        /// <summary> Output Method </summary>
-        private static void WriteLog(object o) {
-            string s = o as string;
-            var temp = outputBuffer;
-
-            outputBuffer = new byte[outputPosition + 1 + Encoding.UTF8.GetBytes(s).Length];
-            temp?.CopyTo(outputBuffer, 0);
-
-            var currentOutput = Encoding.UTF8.GetBytes(s + (char)0x00);
-            currentOutput.CopyTo(outputBuffer, outputPosition);
-            outputPosition += currentOutput.Length;
-        }
-
-        /// <summary> Read A String From The Application Output And Advance (basic poc, will improve later)
-        /// </summary>
-        /// <returns> The Current Output String </returns>
-        public static string ReadLog() {
-            var newString = new StringBuilder();
-            var stringLen = 0;
-
-
-            if(outputReadPosition >= outputBuffer.Length) return "";
-            for(int i = outputReadPosition; outputBuffer[i] != 0; i++) stringLen++;
-
-            newString = newString.Append(Encoding.UTF8.GetString(outputBuffer, outputReadPosition, stringLen));
-            outputReadPosition += stringLen + 1;
-
-            return newString.ToString();
-        }
     }
 }

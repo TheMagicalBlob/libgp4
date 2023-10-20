@@ -1,0 +1,9 @@
+D:\sc\libgp4\obj\Debug\libgp4.csproj.AssemblyReference.cache
+D:\sc\libgp4\obj\Debug\libgp4.Properties.Resources.resources
+D:\sc\libgp4\obj\Debug\libgp4.csproj.GenerateResource.cache
+D:\sc\libgp4\obj\Debug\libgp4.csproj.CoreCompileInputs.cache
+D:\sc\libgp4test\bin\Debug\libgp4.pdb
+D:\sc\libgp4\obj\Debug\libgp4.pdb
+D:\sc\libgp4test\bin\Debug\libgp4.dll.config
+D:\sc\libgp4test\bin\Debug\libgp4.dll
+D:\sc\libgp4\obj\Debug\libgp4.dll
