@@ -95,7 +95,7 @@ namespace libgp4 {
         /// </summary>
         private void CreateFilesElement(string[] file_paths, string gamedata_folder) {
             files = gp4.CreateElement("files");
-            for(index = 0; index < file_paths.Length - 1; index++) {
+            for(index = 0; index < file_paths.Length; index++) {
                 if(FileShouldBeExcluded(file_paths[index])) goto Skip;
                 file = gp4.CreateElement("file");
                 file.SetAttribute("targ_path", (file_paths[index].Replace(gamedata_folder + "\\", string.Empty)).Replace('\\', '/'));

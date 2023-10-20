@@ -48,10 +48,10 @@ namespace libgp4 { // ver 0.2.3
     public partial class GP4Creator {
 
         /// <summary> Initialize Class For Creating new .gp4 Files From Raw PS4 Gamedata </summary>
-        /// <param name="gamedata_folder"> The Folder Containing The Game's Executable And Game/System Data </param>
-        public GP4Creator(string gamedata_folder) {
+        /// <param name="GamedataFolder"> The Folder Containing The Game's Executable And Game/System Data </param>
+        public GP4Creator(string GamedataFolder) {
             gp4 = new XmlDocument();
-            this.gamedata_folder = gamedata_folder;
+            this.gamedata_folder = GamedataFolder;
             Passcode = "00000000000000000000000000000000";
             gp4_declaration = gp4.CreateXmlDeclaration("1.1", "utf-8", "yes");
         }
@@ -201,7 +201,7 @@ namespace libgp4 { // ver 0.2.3
             FileInfo[] file_info = directoryInfo.GetFiles(".", SearchOption.AllDirectories);
 
             string[] file_paths = new string[file_info.Length];
-            for(index = 0; index < file_info.Length - 1; index++)
+            for(index = 0; index < file_info.Length; index++)
                 file_paths[index] = file_info[index].FullName;
 
             return file_paths;
