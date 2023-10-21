@@ -8,10 +8,12 @@ using System.Windows.Forms;
 /// <summary>
 /// A Smalated To .pkg Creation, And A Build Function
 /// </summary>
-namespace libgp4 { // ver 0.2.5
+namespace libgp4 { // ver 0.3.5
     public class GP4Reader {
 
         public GP4Reader(string gp4_path) {
+
+            // Temporarily Change Version To 1.0 To Avoid An Error
             using(Stream gp4_file = new FileStream(gp4_path, FileMode.Open, FileAccess.ReadWrite)) {
                 while(gp4_file.ReadByte() != 0x3D) { }
 
@@ -194,14 +196,14 @@ namespace libgp4 { // ver 0.2.5
         }
 
         /// <summary> Parse playgo-chunks.dat And Param.sfo To Get Most Variables <br/><br/>
-        /// chunk_count <br/>
-        /// chunk_labels <br/>
-        /// scenario_count <br/>
-        /// scenario_types <br/>
-        /// scenario_labels <br/>
-        /// initial_chunk_count <br/>
+        /// chunk_count          <br/>
+        /// chunk_labels         <br/>
+        /// scenario_count       <br/>
+        /// scenario_types       <br/>
+        /// scenario_labels      <br/>
+        /// initial_chunk_count  <br/>
         /// scenario_chunk_range <br/>
-        /// default_id <br/>
+        /// default_id           <br/>
         /// content_id
         /// </summary>
         private void ParsePlaygoChunks(string gamedata_folder) {
@@ -289,9 +291,9 @@ namespace libgp4 { // ver 0.2.5
 
         /// <summary> Parse param.sfo For Various Parameters <br/>
         /// parameter_labels <br/>
-        /// app_ver <br/>
-        /// version <br/>
-        /// category <br/>
+        /// app_ver          <br/>
+        /// version          <br/>
+        /// category         <br/>
         /// title_id
         /// </summary>
         private void ParseSFO(string gamedata_folder) {
@@ -461,7 +463,6 @@ namespace libgp4 { // ver 0.2.5
             string[] Blacklist = new string[] {
                 "sce_sys",
                 "sce_module",
-                ".txt",
                 ".elf",
                 ".bin",
                 ".prx",
@@ -488,7 +489,6 @@ namespace libgp4 { // ver 0.2.5
 
             return false;
         }
-
         #endregion
     }
 }
