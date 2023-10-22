@@ -8,30 +8,23 @@ using System.Windows.Forms;
 /// <summary>
 /// A Smalated To .pkg Creation, And A Build Function
 /// </summary>
-namespace libgp4 { // ver 0.3.5
+namespace libgp4 { // ver 0.4.5
     public class GP4Reader {
 
         public GP4Reader(string gp4_path) {
 
-            // Temporarily Change Version To 1.0 To Avoid An Error
-            using(Stream gp4_file = new FileStream(gp4_path, FileMode.Open, FileAccess.ReadWrite)) {
-                while(gp4_file.ReadByte() != 0x3D) { }
-
-                buffer = new byte[5];
-                gp4_file.Read(buffer, 0, 5);
-                if(buffer.SequenceEqual(new byte[] { 0x22, 0x31, 0x2E, 0x31, 0x22 })) {
-                    buffer[3] = 0x30;
-                    gp4_file.Position -= 5;
-                    gp4_file.Write(buffer, 0, 5);
-                    gp4_file.Flush();
-                }
+            // Read Passed The XmlDeclaration Before Initializing The XmlReader Instance
+            // To Avoid Throwing An Exception Due To A Verion Conflict (.gp4 uses 1.1, Which .NET Doesn't Support)
+            using(StreamReader gp4_file = new StreamReader(gp4_path)) {
+                gp4_file.ReadLine();
+                gp4 = XmlReader.Create(gp4_file);
             }
-
-            gp4 = XmlReader.Create(gp4_path);
         }
 
+
         private XmlReader gp4;
-        private readonly byte[] buffer;
+        private byte[] buffer;
+        private string gp4_path;
         public XmlNodeType Read() {
             gp4.Read();
             gp4.MoveToNextAttribute();
