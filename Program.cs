@@ -8,7 +8,7 @@ using System.Windows.Forms;
 /// <summary>
 /// A Smalated To .pkg Creation, And A Build Function
 /// </summary>
-namespace libgp4 { // ver 0.4.5
+namespace libgp4 { // ver 0.4.6
     public class GP4Reader {
 
         public GP4Reader(string gp4_path) {
@@ -23,8 +23,6 @@ namespace libgp4 { // ver 0.4.5
 
 
         private XmlReader gp4;
-        private byte[] buffer;
-        private string gp4_path;
         public XmlNodeType Read() {
             gp4.Read();
             gp4.MoveToNextAttribute();
