@@ -14,7 +14,8 @@ namespace libgp4 { // ver 0.4.6
         public GP4Reader(string gp4_path) {
 
             // Read Passed The XmlDeclaration Before Initializing The XmlReader Instance
-            // To Avoid Throwing An Exception Due To A Verion Conflict (.gp4 uses 1.1, Which .NET Doesn't Support)
+            // To Avoid Throwing An Exception Due To A Verion Conflict Instead Of Editing The .gp4 Before/After
+            // (.gp4 uses 1.1, Which.NET Doesn't Support)
             using(StreamReader gp4_file = new StreamReader(gp4_path)) {
                 gp4_file.ReadLine();
                 gp4 = XmlReader.Create(gp4_file);
