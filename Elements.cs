@@ -57,7 +57,7 @@ namespace libgp4 {
             package.SetAttribute("app_type", "full");
 
             if(category == "gp")
-                package.SetAttribute("app_path", $"{(pkg_source == "" ? $"{content_id}-A{app_ver.Replace(".", "")}-V{version.Replace(".", "")}.pkg" : pkg_source)}");
+                package.SetAttribute("app_path", $"{(pkg_source == "" ? $"{content_id}-A0100-V{version.Replace(".", "")}.pkg" : pkg_source)}");
 
             chunk_info = gp4.CreateElement("chunk_info");
             chunk_info.SetAttribute("chunk_count", $"{chunk_count}");
