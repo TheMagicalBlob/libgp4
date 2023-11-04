@@ -8,7 +8,7 @@ using System.Diagnostics.Eventing.Reader;
 
 /// <summary> A Small Library For Building .gp4 Files Used In The PS4 .pkg Creation Process, And Reading Info From Already Created Ones
 ///</summary>
-namespace libgp4 { // ver 0.4.6
+namespace libgp4 { // ver 0.5.6
 
     ///<summary>  read all at once and give the user the ability to check different values afterwards
     ///</summary>
@@ -38,6 +38,7 @@ namespace libgp4 { // ver 0.4.6
         private string h_padding;
         private XmlReader gp4;
         #endregion
+
         #region User Options
         ////////////////\\\\\\\\\\\\\\\\
         ///--     User Options     --\\\

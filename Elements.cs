@@ -91,24 +91,6 @@ namespace libgp4 {
 
         }
 
-        /// <summary> Create "files" Element, Containing File Destination And Source Paths, Along With Whether To Enable PFS Compression
-        /// </summary>
-        private void CreateFilesElement(string[] file_paths, string gamedata_folder) {
-            files = gp4.CreateElement("files");
-
-            for(index = 0; index < file_paths.Length; index++)
-                if(!FileShouldBeExcluded(file_paths[index])) {
-                    file = gp4.CreateElement("file");
-                    file.SetAttribute("targ_path", (file_paths[index].Replace(gamedata_folder + "\\", string.Empty)).Replace('\\', '/'));
-                    file.SetAttribute("orig_path", file_paths[index]);
-                    if(!SkipCompression(file_paths[index]))
-                        file.SetAttribute("pfs_compression", "enable");
-                    if(!SkipChunkAttribute(file_paths[index]))
-                        file.SetAttribute("chunks", $"0-{chunk_count - 1}");
-                    files.AppendChild(file);
-                }
-        }
-
         /// <summary> Create "chunks" Element
         /// </summary>
         private void CreateChunksElement(string[] chunk_labels, int chunk_count) {
@@ -137,10 +119,31 @@ namespace libgp4 {
                 scenario.SetAttribute("type", $"{(scenario_types[index] == 1 ? "sp" : "mp")}");
                 scenario.SetAttribute("initial_chunk_count", $"{initial_chunk_count[index]}");
                 scenario.SetAttribute("label", $"{scenario_labels[index]}");
-                scenario.InnerText = $"0-{scenario_chunk_range[index] - 1}";
+                if (scenario_chunk_range[index] - 1 != 0)
+                    scenario.InnerText = $"0-{scenario_chunk_range[index] - 1}";
+                else scenario.InnerText = "0";
                 scenarios.AppendChild(scenario);
             }
 
+        }
+
+
+        /// <summary> Create "files" Element, Containing File Destination And Source Paths, Along With Whether To Enable PFS Compression
+        /// </summary>
+        private void CreateFilesElement(string[] file_paths, string gamedata_folder) {
+            files = gp4.CreateElement("files");
+
+            for(index = 0; index < file_paths.Length; index++)
+                if(!FileShouldBeExcluded(file_paths[index])) {
+                    file = gp4.CreateElement("file");
+                    file.SetAttribute("targ_path", (file_paths[index].Replace(gamedata_folder + "\\", string.Empty)).Replace('\\', '/'));
+                    file.SetAttribute("orig_path", file_paths[index]);
+                    if(!SkipCompression(file_paths[index]))
+                        file.SetAttribute("pfs_compression", "enable");
+                    if(!SkipChunkAttribute(file_paths[index]) && chunk_count - 1 != 0)
+                        file.SetAttribute("chunks", $"0-{chunk_count - 1}");
+                    files.AppendChild(file);
+                }
         }
 
 
