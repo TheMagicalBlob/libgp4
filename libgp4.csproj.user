@@ -2,6 +2,6 @@
 <Project ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|AnyCPU'">
     <StartAction>Program</StartAction>
-    <StartProgram>D:\sc\libgp4test\bin\Debug\libgp4test.exe</StartProgram>
+    <StartProgram>D:\sc\Gp4ProjectBuilder\bin\Debug\GP4 GUI.exe</StartProgram>
   </PropertyGroup>
 </Project>
