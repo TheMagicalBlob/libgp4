@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Xml;
 using System.Windows.Forms;
+using System.Collections.Generic;
 
 /// <summary> A Small Library For Building .gp4 Files Used In The PS4 .pkg Creation Process, And Reading Info From Already Created Ones
 ///</summary>
@@ -13,25 +14,36 @@ namespace libgp4 { // ver 0.5.6
     //  GP4READER CLASS  \\
     ///////////\\\\\\\\\\\\
     public class GP4Reader {
-        public GP4Reader(string gp4_path) {
+        public GP4Reader(string gp4_path, RichTextBox LogWindow = null) {
             StreamReader gp4_file = new StreamReader(gp4_path);
 
             // Read Passed The XmlDeclaration Before Initializing The XmlReader Instance To Avoid A Version Conflict
             // (.gp4 uses 1.1, .NET Doesn't Support It)
             gp4_file.ReadLine();
             gp4 = XmlReader.Create(gp4_file);
+            LogTextBox = LogWindow;
             Gp4_Path = gp4_path;
 
             ParseGP4();
         }
 
+
+
+
+
+        ////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\
+        ///--     Internal Variables / Methods     --\\\
+        ////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\
+        private readonly string Gp4_Path;
+        private static XmlReader gp4;
         /// <summary> Output Log Messages To The LogTextBox, Followed By A Line Terminator </summary>
         private void WLog(object o) {
             try {
                 if(EnableConsoleLogging)
                     Console.WriteLine(o as string);
             }
-            catch(Exception){}
+            catch(Exception) { }
+            if(LogTextBox == null) return;
 
             LogTextBox?.AppendText($"{o}\n");
             LogTextBox?.ScrollToCaret();
@@ -43,71 +55,93 @@ namespace libgp4 { // ver 0.5.6
                 if(EnableConsoleLogging)
                     Console.WriteLine(o as string);
             }
-            catch(Exception){}
+            catch(Exception) { }
+            if(LogTextBox == null) return;
 
             LogTextBox?.AppendText($"{o}");
             LogTextBox?.ScrollToCaret();
             LogTextBox?.Update();
         }
-
-        private void ParseGP4() {
-            string[]
-            AttributeNames = new string[] {
-                "passcode",
-                "app_path",
-                "content_id",
-                "chunk_count",
-                "scenario_count",
-
-            },
-            NodeNames      = new string[] {
-                "volume_type",
-                "volume_ts",
-                "package",
-                "chunk_count",
-                "scenario_count",
-
-            };
-
-            do {
-                if (gp4.NodeType == XmlNodeType.Element)
-            }
-            while(gp4.Read());
-        }
-
-
-
-        // Internal Variables ||
-        private static XmlReader gp4;
-        private readonly string Gp4_Path;
-        ///////////////////// ||
+        /////////////////////////////////////|
 
 
 
 
         ////////////////\\\\\\\\\\\\\\\\
-        ///--     User Options     --\\\
-        /////////////////\\\\\\\\\\\\\\\
-        #region User Options
+        ///--     User Options     --\\\ (User Accessed)
+        ////////////////\\\\\\\\\\\\\\\\
+        #region User Options / Variables
 
         /// <summary> Optional Rich Text Box Control To Use As A Log For The Creation Process </summary>
         public RichTextBox LogTextBox;
-        /// <summary> Also Outputs Log Messages To The Standard Console </summary>
+
+        /// <summary> Outputs Log Messages To The Standard Console Output Prior To The Log Control </summary>
         public bool EnableConsoleLogging;
         #endregion
 
 
-        /////////////////\\\\\\\\\\\\\\\\\
-        ///--     GP4 Attributes     --\\\
-        //////////////////\\\\\\\\\\\\\\\\
-        #region GP4 Attributes
-        public string
-            Passcode,
-            BasePkgPath,
-            ContentID
+        //////////////////////\\\\\\\\\\\\\\\\\\\\\
+        ///--     GP4 Attributes / Values     --\\\ (User Accessed)
+        //////////////////////\\\\\\\\\\\\\\\\\\\\\
+        #region GP4 Attributes / Values
+        public string Passcode { get; private set; }
+        public string BasePkgPath { get; private set; }
+        public string ContentID { get; private set; }
+        public string AppPath { get; private set; }
+
+        public string[]
+            Chunks,
+            Scenarios,
+            Files,
+            Subfolders
         ;
 
+        public int? ScenarioCount { get; private set; }
+        public int? ChunkCount { get; private set; }
+        public int[] ChunkIDs { get; private set; }
         #endregion
+
+
+        private void ParseGP4() {
+            do {
+                if(gp4.MoveToContent() == XmlNodeType.Element) {
+                    switch(gp4.LocalName) {
+                        default:
+                            continue;
+                        case "volume":
+                            ContentID = gp4.GetAttribute("content_id");
+                            Passcode  = gp4.GetAttribute("passcode");
+                            AppPath   = gp4.GetAttribute("app_path");
+                            break;
+                        case "chunk_info":
+                            ScenarioCount  = int.Parse(gp4.GetAttribute("Chunk_count"));
+                            ChunkCount  = int.Parse(gp4.GetAttribute("scenario_count"));
+                            break;
+                        case "chunks":
+                            var Chunks = new List<string>();
+                            var IDs = new List<int>();
+
+                            while(gp4.Read() && gp4.LocalName == "chunk") {
+                                IDs.Add(int.Parse(gp4.GetAttribute("id")));
+                                Chunks.Add(gp4.GetAttribute("label"));
+                            }
+
+                            ChunkIDs = IDs.ToArray();
+                            this.Chunks = Chunks.ToArray();
+                            break;
+                        case "scenarios":
+                            // Grab Scenarios
+                            break;
+                        case "files":
+                            // Grab All File Paths
+                            break;
+                    }
+                }
+                else WLog($"Ignoring: [{gp4.LocalName}]");
+            }
+            while(gp4.Read());
+        }
+
 
         /////////////////\\\\\\\\\\\\\\\\\
         ///--     User Functions     --\\\
@@ -483,9 +517,10 @@ namespace libgp4 { // ver 0.5.6
         /// </summary>
         private void ParseSFO(string gamedata_folder) {
             using(var param_sfo = File.OpenRead($@"{gamedata_folder}\sce_sys\param.sfo")) {
+
                 // Read Pointer For Array Of Parameter Names
-                param_sfo.Position = 0x8;
                 buffer = new byte[4];
+                param_sfo.Position = 0x8;
                 param_sfo.Read(buffer, 0, 4);
                 var sfo_param_name_array_pointer = BitConverter.ToInt32(buffer, 0);
 
@@ -558,7 +593,7 @@ namespace libgp4 { // ver 0.5.6
 
         /// <summary> Parses A Byte Array And Converts Data To A String Array, With Strings Seperated By Null Bytes
         ///</summary>
-        /// <param name="StringArray"> The Array To Write To, Already Initialized Before Calling This </param>
+        /// <param name="StringArray"> The Initialized Array To Write To</param>
         private void ConvertbufferToStringArray(string[] StringArray) {
             int byteIndex = 0;
             StringBuilder Builder;

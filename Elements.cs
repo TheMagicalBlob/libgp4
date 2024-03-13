@@ -36,7 +36,7 @@ namespace libgp4 {
         /////////////////////\\\\\\\\\\\\\\\\\\\
 
         /// <summary>
-        ///   Create Base .gp4 Elements
+        ///   Create Base .gp4 Elements (Up To Chunk/Scenario Data)
         /// </summary>
         private void CreateBaseElements(string category, string timestamp, string content_id, string passcode, string pkg_source, string app_ver, string version, int chunk_count, int scenario_count) {
             psproject = gp4.CreateElement("psproject");
@@ -70,7 +70,26 @@ namespace libgp4 {
 
 
         /// <summary>
-        ///    Create "rootdir" Element Containing A Listing Of Each Directory And Subdirectory In The Game's File Structure
+        ///   Create "files" Element, Containing File Destination And Source Paths, Along With Whether To Enable PFS Compression
+        /// </summary>
+        private void CreateFilesElement(string[] file_paths, string gamedata_folder) {
+            files = gp4.CreateElement("files");
+
+            for(index = 0; index < file_paths.Length; index++)
+            if(!FileShouldBeExcluded(file_paths[index])) {
+                file = gp4.CreateElement("file");
+                file.SetAttribute("targ_path", (file_paths[index].Replace(gamedata_folder + "\\", string.Empty)).Replace('\\', '/'));
+                file.SetAttribute("orig_path", file_paths[index]);
+                if(!SkipCompression(file_paths[index]))
+                    file.SetAttribute("pfs_compression", "enable");
+                if(!SkipChunkAttribute(file_paths[index]) && chunk_count - 1 != 0)
+                    file.SetAttribute("chunks", $"0-{chunk_count - 1}");
+                files.AppendChild(file);
+            }
+        }
+
+        /// <summary>
+        ///    Create "rootdir" Element Containing The Game's File Structure through A Listing Of Each Directory And Subdirectory
         /// </summary>
         private void CreateRootDirectoryElement(string gamedata_folder) {
             rootdir = gp4.CreateElement("rootdir");
@@ -135,27 +154,6 @@ namespace libgp4 {
 
         }
 
-
-        /// <summary>
-        ///   Create "files" Element, Containing File Destination And Source Paths, Along With Whether To Enable PFS Compression
-        /// </summary>
-        private void CreateFilesElement(string[] file_paths, string gamedata_folder) {
-            files = gp4.CreateElement("files");
-
-            for(index = 0; index < file_paths.Length; index++)
-                if(!FileShouldBeExcluded(file_paths[index])) {
-                    file = gp4.CreateElement("file");
-                    file.SetAttribute("targ_path", (file_paths[index].Replace(gamedata_folder + "\\", string.Empty)).Replace('\\', '/'));
-                    file.SetAttribute("orig_path", file_paths[index]);
-                    if(!SkipCompression(file_paths[index]))
-                        file.SetAttribute("pfs_compression", "enable");
-                    if(!SkipChunkAttribute(file_paths[index]) && chunk_count - 1 != 0)
-                        file.SetAttribute("chunks", $"0-{chunk_count - 1}");
-                    files.AppendChild(file);
-                }
-        }
-
-
         /// <summary>
         ///   Build .gp4 Structure And Save To File
         ///</summary>
@@ -163,20 +161,24 @@ namespace libgp4 {
         public TimeSpan WriteElementsToGP4(TimeSpan internal_timestamp) {
             gp4.AppendChild(gp4_declaration);
             gp4.AppendChild(psproject);
+            
             psproject.AppendChild(volume);
             psproject.AppendChild(files);
             psproject.AppendChild(rootdir);
+            
             volume.AppendChild(volume_type);
             volume.AppendChild(volume_id);
             volume.AppendChild(volume_ts);
             volume.AppendChild(package);
             volume.AppendChild(chunk_info);
+            
             chunk_info.AppendChild(chunks);
             chunk_info.AppendChild(scenarios);
 
             var NewTime = new TimeSpan(DateTime.Now.Day, DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second, DateTime.Now.Millisecond);
             var stamp = gp4.CreateComment($"gengp4.exe Alternative. Time Taken For Build Process: {NewTime.Subtract(internal_timestamp)}");
             gp4.AppendChild(stamp);
+
             return NewTime;
         }
     }
