@@ -84,21 +84,36 @@ namespace libgp4 { // ver 0.5.6
         ///--     GP4 Attributes / Values     --\\\ (User Accessed)
         //////////////////////\\\\\\\\\\\\\\\\\\\\\
         #region GP4 Attributes / Values
-        public string Passcode { get; private set; }
+        public string Passcode    { get; private set; }
         public string BasePkgPath { get; private set; }
-        public string ContentID { get; private set; }
-        public string AppPath { get; private set; }
+        public string ContentID   { get; private set; }
+        public string AppPath     { get; private set; }
 
         public string[]
             Chunks,
-            Scenarios,
             Files,
             Subfolders
         ;
 
-        public int? ScenarioCount { get; private set; }
-        public int? ChunkCount { get; private set; }
-        public int[] ChunkIDs { get; private set; }
+        public int?  ScenarioCount     { get; private set; }
+        public int?  ChunkCount        { get; private set; }
+        public int?  DefaultScenarioID { get; private set; }
+        public int[] ChunkIDs          { get; private set; }
+        public Scenario[] Scenarios    { get; private set; }
+        public int[] ScenarioIDs       { get; private set; }
+
+        public struct Scenario {
+            public Scenario(XmlReader gp4Stream) {
+                Type  = gp4Stream.GetAttribute("type");
+                Label = gp4Stream.GetAttribute("label");
+                Id                = int.Parse(gp4Stream.GetAttribute("id"));
+                InitialChunkCount = int.Parse(gp4Stream.GetAttribute("initial_chunk_count"));
+            }
+
+            public int Id, InitialChunkCount;
+            public string Type, Label;
+
+        }
         #endregion
 
 
@@ -115,22 +130,29 @@ namespace libgp4 { // ver 0.5.6
                             break;
                         case "chunk_info":
                             ScenarioCount  = int.Parse(gp4.GetAttribute("Chunk_count"));
-                            ChunkCount  = int.Parse(gp4.GetAttribute("scenario_count"));
+                            ChunkCount     = int.Parse(gp4.GetAttribute("scenario_count"));
                             break;
                         case "chunks":
-                            var Chunks = new List<string>();
-                            var IDs = new List<int>();
+                            var Chunks   = new List<string>();
+                            var ChunkIDs = new List<int>();
 
                             while(gp4.Read() && gp4.LocalName == "chunk") {
-                                IDs.Add(int.Parse(gp4.GetAttribute("id")));
+                                ChunkIDs.Add(int.Parse(gp4.GetAttribute("id")));
                                 Chunks.Add(gp4.GetAttribute("label"));
                             }
 
-                            ChunkIDs = IDs.ToArray();
-                            this.Chunks = Chunks.ToArray();
+                            this.Chunks   = Chunks.ToArray();
+                            this.ChunkIDs = ChunkIDs.ToArray();
                             break;
                         case "scenarios":
-                            // Grab Scenarios
+                            DefaultScenarioID = int.Parse(gp4.GetAttribute("default_id"));
+                            
+                            var Scenarios = new List<Scenario>();
+
+                            while(gp4.Read() && gp4.LocalName == "chunk") {
+                                Scenarios.Add(new Scenario(gp4));
+                            }
+
                             break;
                         case "files":
                             // Grab All File Paths
