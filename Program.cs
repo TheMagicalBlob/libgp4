@@ -9,7 +9,7 @@ using System.Collections.Generic;
 
 /// <summary> A Small Library For Building .gp4 Files Used In The PS4 .pkg Creation Process, And Reading Info From Already Created Ones
 ///</summary>
-namespace libgp4 { // ver 0.8.24
+namespace libgp4 { // ver 0.8.25
 
     ///////////\\\\\\\\\\\\
     //  GP4READER CLASS  \\
@@ -151,9 +151,10 @@ namespace libgp4 { // ver 0.8.24
                     switch(gp4.LocalName) {
                         default: continue;
 
-                        case "volume":
-                            System.Diagnostics.Debug.WriteLine("Volume");
+                        case "volume_type":
+                            break;
 
+                        case "package":
                             ContentID = gp4.GetAttribute("content_id");
                             Passcode  = gp4.GetAttribute("passcode");
                             AppPath   = gp4.GetAttribute("app_path");
