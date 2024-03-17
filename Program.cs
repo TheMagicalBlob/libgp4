@@ -9,7 +9,7 @@ using System.Collections.Generic;
 
 /// <summary> A Small Library For Building .gp4 Files Used In The PS4 .pkg Creation Process, And Reading Info From Already Created Ones
 ///</summary>
-namespace libgp4 { // ver 0.5.6
+namespace libgp4 { // ver 0.8.24
 
     ///////////\\\\\\\\\\\\
     //  GP4READER CLASS  \\
@@ -60,7 +60,7 @@ namespace libgp4 { // ver 0.5.6
             LogTextBox?.Update();
         }
 
-        private void DLog(object o) {
+        private static void DLog(object o) {
             try { Debug.WriteLine(o as string); }
             catch(Exception){}
 
@@ -203,46 +203,50 @@ namespace libgp4 { // ver 0.5.6
         /////////////////\\\\\\\\\\\\\\\\\
         #region User Functions
 
-        public string GetBasePkgPath()                      => GetAttribute("package", "app_path");
-        public string GetPkgPasscode()                      => GetAttribute("package", "passcode");
+        /// <returns>
+        /// The Path Of The Base Game Package The .gp4 Project File's Patch Is To Be Married With
+        /// </returns>
         public static string GetBasePkgPath(string GP4Path) => GetAttribute(GP4Path, "package", "app_path");
+
+        /// <returns>
+        /// The Passcode The .pkg Will Be Encrypted With (Pointless On fpkg's, Does Not Prevent Dumping)
+        /// </returns>
         public static string GetPkgPasscode(string GP4Path) => GetAttribute(GP4Path, "package", "passcode");
 
-        private string GetAttribute(string NodeName, string AttributeName) {
-            string Out = null;
 
-            while(gp4.Read())
-                if(gp4.LocalName == NodeName && (Out = gp4.GetAttribute(AttributeName)) != null) {
-                    gp4.Dispose();
-                    return Out;
-                }
 
-            gp4.Dispose();
-            return "Attribute Not Found";
-        }
+        /// <summary> Open A .gp4 at The Specified GP4Path and Read AttributeName </summary>
+        /// 
+        /// <param name="GP4Path"> An Absolute Or Relative Path To The .gp4 File</param>
+        /// <param name="NodeName"> Attribute's Parent Node </param>
+        /// <param name="AttributeName"> The Attribute To Read And Return </param>
+        /// <returns> The Value Of The Specified Attribute If Successfully Found, string.Empty Otherwise </returns>
         private static string GetAttribute(string GP4Path, string NodeName, string AttributeName) {
+            if(GP4Path[0] == '\\')
+                GP4Path = Directory.GetCurrentDirectory() + GP4Path; // Relative Path Check
+
+            if (!File.Exists(GP4Path) && !File.Exists(GP4Path = $@"{Directory.GetCurrentDirectory()}\{GP4Path}")) // Absolute And Second Relative Path Checks || (In Case The User Excluded The First Backslash, idfk Why)
+                return $"Attribute \"{AttributeName}\" Not Found";
+
             using(StreamReader GP4File = new StreamReader(GP4Path)) {
                 GP4File.ReadLine();
-                gp4 = XmlReader.Create(GP4File);
                 string Out = null;
 
+                using (gp4 = XmlReader.Create(GP4File))
                 while(gp4.Read())
-                    if(gp4.LocalName == NodeName && (Out = gp4.GetAttribute(AttributeName)) != null) {
-                        gp4.Dispose();
+                    if(gp4.LocalName == NodeName && (Out = gp4.GetAttribute(AttributeName)) != null)
                         return Out;
-                    }
 
-                gp4.Dispose();
-                return "Attribute Not Found";
+                DLog($"Attribute \"{AttributeName}\" Not Found");
+                return string.Empty;
             }
         }
         #endregion
 
 
-#if DEBUG
 
-        /// <summary> tests
-        ///</summary>
+#if DEBUG
+        /// <summary> xmlreader familiarization tests /</summary>
         public void DebugReader() {
             string D_Horizontal_Padding;
 
@@ -310,6 +314,8 @@ namespace libgp4 { // ver 0.5.6
     }
 
 
+
+
     ///////////////////////\\\\\\\\\\\\\\\\\\\\\\\
     //  GP4Creator: .gp4 Project Creation Class \\
     ///////////////////////\\\\\\\\\\\\\\\\\\\\\\\
@@ -351,7 +357,7 @@ namespace libgp4 { // ver 0.5.6
         //  GP4 Creation Variables  \\
         ///////////////\\\\\\\\\\\\\\\
         private string gamedata_folder;
-        private int chunk_count, scenario_count, default_id, index = 0;
+        private int chunk_count, scenario_count, default_id, index = 0; //! Why am I using a global fucking index?
         private int[] scenario_types, scenario_chunk_range, initial_chunk_count;
         private string app_ver, version, content_id, title_id, category;
         private string[] chunk_labels, parameter_labels, scenario_labels;

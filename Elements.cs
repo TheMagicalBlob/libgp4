@@ -140,15 +140,20 @@ namespace libgp4 {
         private void CreateScenariosElement(string[] scenario_labels) {
             scenarios = gp4.CreateElement("scenarios");
             scenarios.SetAttribute("default_id", $"{default_id}");
+
             for(index = 0; index < scenario_count; index++) {
                 scenario = gp4.CreateElement("scenario");
+
                 scenario.SetAttribute("id", $"{index}");
                 scenario.SetAttribute("type", $"{(scenario_types[index] == 1 ? "sp" : "mp")}");
                 scenario.SetAttribute("initial_chunk_count", $"{initial_chunk_count[index]}");
                 scenario.SetAttribute("label", $"{scenario_labels[index]}");
+                
                 if (scenario_chunk_range[index] - 1 != 0)
                     scenario.InnerText = $"0-{scenario_chunk_range[index] - 1}";
+
                 else scenario.InnerText = "0";
+                
                 scenarios.AppendChild(scenario);
             }
 
