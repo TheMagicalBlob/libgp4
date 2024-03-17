@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Text;
@@ -17,17 +18,13 @@ namespace libgp4 { // ver 0.5.6
         public GP4Reader(string gp4_path, RichTextBox LogWindow = null) {
             StreamReader gp4_file = new StreamReader(gp4_path);
 
-            // Read Passed The XmlDeclaration Before Initializing The XmlReader Instance To Avoid A Version Conflict
-            // (.gp4 uses 1.1, .NET Doesn't Support It)
-            gp4_file.ReadLine();
+            gp4_file.ReadLine(); // Skip First Line To Avoid A Version Conflict
             gp4 = XmlReader.Create(gp4_file);
             LogTextBox = LogWindow;
             Gp4_Path = gp4_path;
 
             ParseGP4();
         }
-
-
 
 
 
@@ -62,6 +59,14 @@ namespace libgp4 { // ver 0.5.6
             LogTextBox?.ScrollToCaret();
             LogTextBox?.Update();
         }
+
+        private void DLog(object o) {
+            try { Debug.WriteLine(o as string); }
+            catch(Exception){}
+
+            try { Console.WriteLine(o as string); }
+            catch(Exception){}
+        }
         /////////////////////////////////////|
 
 
@@ -84,24 +89,46 @@ namespace libgp4 { // ver 0.5.6
         ///--     GP4 Attributes / Values     --\\\ (User Accessed)
         //////////////////////\\\\\\\\\\\\\\\\\\\\\
         #region GP4 Attributes / Values
+        
+        /// <summary> Password For The Package To Be Made </summary>
         public string Passcode    { get; private set; }
-        public string BasePkgPath { get; private set; }
-        public string ContentID   { get; private set; }
+
+        /// <summary>
+        /// (Applies To Patch Packages Only)
+        /// <br/><br/>
+        /// 
+        /// Absolute Path To The Base Game .pkg The Patch .pkg's Going To Be Married To. <br/>
+        /// </summary>
         public string AppPath     { get; private set; }
 
+        /// <summary>
+        /// Content ID Of The .gp4 Project's Game
+        /// <br/>
+        /// (Label &amp; Title ID)
+        /// </summary>
+        public string ContentID   { get; private set; }
+        
+        /// <summary> Summary TBA </summary>
         public string[]
             Chunks,
             Files,
             Subfolders
         ;
 
-        public int?  ScenarioCount     { get; private set; }
-        public int?  ChunkCount        { get; private set; }
-        public int?  DefaultScenarioID { get; private set; }
-        public int[] ChunkIDs          { get; private set; }
-        public Scenario[] Scenarios    { get; private set; }
-        public int[] ScenarioIDs       { get; private set; }
-
+        /// <summary> Summary TBA </summary>
+        public int? ScenarioCount { get; private set; }
+        
+        /// <summary> Summary TBA </summary>
+        public int? ChunkCount { get; private set; }
+        
+        /// <summary> Summary TBA </summary>
+        public int? DefaultScenarioID { get; private set; }
+        
+        /// <summary> Summary TBA </summary>
+        public int[] ChunkIDs { get; private set; }
+        
+        /// <summary> Array Containing Each Scenario In The Form Of A Simple Struct (Top - Bottom / 0 - Last)</summary>
+        public Scenario[] Scenarios { get; private set; }
         public struct Scenario {
             public Scenario(XmlReader gp4Stream) {
                 Type  = gp4Stream.GetAttribute("type");
@@ -120,18 +147,23 @@ namespace libgp4 { // ver 0.5.6
         private void ParseGP4() {
             do {
                 if(gp4.MoveToContent() == XmlNodeType.Element) {
+
                     switch(gp4.LocalName) {
-                        default:
-                            continue;
+                        default: continue;
+
                         case "volume":
+                            System.Diagnostics.Debug.WriteLine("Volume");
+
                             ContentID = gp4.GetAttribute("content_id");
                             Passcode  = gp4.GetAttribute("passcode");
                             AppPath   = gp4.GetAttribute("app_path");
                             break;
+
                         case "chunk_info":
-                            ScenarioCount  = int.Parse(gp4.GetAttribute("Chunk_count"));
+                            ScenarioCount  = int.Parse(gp4.GetAttribute("chunk_count"));
                             ChunkCount     = int.Parse(gp4.GetAttribute("scenario_count"));
                             break;
+
                         case "chunks":
                             var Chunks   = new List<string>();
                             var ChunkIDs = new List<int>();
@@ -144,6 +176,7 @@ namespace libgp4 { // ver 0.5.6
                             this.Chunks   = Chunks.ToArray();
                             this.ChunkIDs = ChunkIDs.ToArray();
                             break;
+
                         case "scenarios":
                             DefaultScenarioID = int.Parse(gp4.GetAttribute("default_id"));
                             
@@ -210,7 +243,7 @@ namespace libgp4 { // ver 0.5.6
 
         /// <summary> tests
         ///</summary>
-        public void Debug() {
+        public void DebugReader() {
             string D_Horizontal_Padding;
 
             void WPLog(object o) {
@@ -680,7 +713,7 @@ namespace libgp4 { // ver 0.5.6
                     @"sce_sys\.general_digests",
                     @"sce_sys\target-deltainfo.dat",
                     @"sce_sys\app\playgo-manifest.xml"
-                };
+            };
 
             foreach(var blacklisted_file_or_folder in blacklist)
                 if(filepath.Contains(blacklisted_file_or_folder)) {
