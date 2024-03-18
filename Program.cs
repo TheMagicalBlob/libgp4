@@ -9,7 +9,7 @@ using System.Collections.Generic;
 
 /// <summary> A Small Library For Building .gp4 Files Used In The PS4 .pkg Creation Process, And Reading Info From Already Created Ones
 ///</summary>
-namespace libgp4 { // ver 0.8.25
+namespace libgp4 { // ver 0.9.31
 
     ///////////\\\\\\\\\\\\
     //  GP4READER CLASS  \\
@@ -31,8 +31,37 @@ namespace libgp4 { // ver 0.8.25
         ////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\
         ///--     Internal Variables / Methods     --\\\
         ////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\
-        private readonly string Gp4_Path;
         private static XmlReader gp4;
+
+        private readonly string Gp4_Path;
+
+        private string[] blacklist = new string[] {
+                  // Drunk Canadian Guy
+                    "right.sprx",
+                    "sce_discmap.plt",
+                    "sce_discmap_patch.plt",
+                    @"sce_sys\playgo-chunk",
+                    @"sce_sys\psreserved.dat",
+                    @"sce_sys\playgo-manifest.xml",
+                    @"sce_sys\origin-deltainfo.dat",
+                  // Al Azif
+                    @"sce_sys\.metas",
+                    @"sce_sys\.digests",
+                    @"sce_sys\.image_key",
+                    @"sce_sys\license.dat",
+                    @"sce_sys\.entry_keys",
+                    @"sce_sys\.entry_names",
+                    @"sce_sys\license.info",
+                    @"sce_sys\selfinfo.dat",
+                    @"sce_sys\imageinfo.dat",
+                    @"sce_sys\.unknown_0x21",
+                    @"sce_sys\.unknown_0xC0",
+                    @"sce_sys\pubtoolinfo.dat",
+                    @"sce_sys\app\playgo-chunk",
+                    @"sce_sys\.general_digests",
+                    @"sce_sys\target-deltainfo.dat",
+                    @"sce_sys\app\playgo-manifest.xml"
+            };
         /// <summary> Output Log Messages To The LogTextBox, Followed By A Line Terminator </summary>
         private void WLog(object o) {
             try {
@@ -60,12 +89,14 @@ namespace libgp4 { // ver 0.8.25
             LogTextBox?.Update();
         }
 
-        private static void DLog(object o) {
+        private static bool DLog(object o) {
             try { Debug.WriteLine(o as string); }
             catch(Exception){}
 
             try { Console.WriteLine(o as string); }
             catch(Exception){}
+
+            return true;//!
         }
         /////////////////////////////////////|
 
@@ -89,9 +120,6 @@ namespace libgp4 { // ver 0.8.25
         ///--     GP4 Attributes / Values     --\\\ (User Accessed)
         //////////////////////\\\\\\\\\\\\\\\\\\\\\
         #region GP4 Attributes / Values
-        
-        /// <summary> Password For The Package To Be Made </summary>
-        public string Passcode    { get; private set; }
 
         /// <summary>
         /// (Applies To Patch Packages Only)
@@ -99,105 +127,182 @@ namespace libgp4 { // ver 0.8.25
         /// 
         /// Absolute Path To The Base Game .pkg The Patch .pkg's Going To Be Married To. <br/>
         /// </summary>
-        public string AppPath     { get; private set; }
+        public string BaseAppPkgPath { get; private set; }
+
+        /// <summary> Password For The Package To Be Made
+        /// </summary>
+        public string Passcode { get; private set; }
+
+        public bool IsPatchProject { get; private set; }
 
         /// <summary>
         /// Content ID Of The .gp4 Project's Game
         /// <br/>
         /// (Label &amp; Title ID)
         /// </summary>
-        public string ContentID   { get; private set; }
-        
-        /// <summary> Summary TBA </summary>
-        public string[]
-            Chunks,
-            Files,
-            Subfolders
-        ;
+        public string ContentID { get; private set; }
 
-        /// <summary> Summary TBA </summary>
-        public int? ScenarioCount { get; private set; }
-        
-        /// <summary> Summary TBA </summary>
-        public int? ChunkCount { get; private set; }
-        
-        /// <summary> Summary TBA </summary>
-        public int? DefaultScenarioID { get; private set; }
-        
-        /// <summary> Summary TBA </summary>
-        public int[] ChunkIDs { get; private set; }
-        
-        /// <summary> Array Containing Each Scenario In The Form Of A Simple Struct (Top - Bottom / 0 - Last)</summary>
+        /// <summary> Array Of All Files Listed In The .gp4 Project
+        /// </summary>
+        public string[] Files { get; private set; }
+        public int FileCount  { get; private set; }
+
+        /// <summary> Names Of Each Individual Folder Within The Project Folder, As Well As Any Subfolders As Stored In The .gp4
+        /// </summary>
+        public string[] SubfolderNames { get; private set; }
+
+        /// <summary> Each Individual Folder/Subfolder Within The Project Folder
+        /// </summary>
+        public string[] Subfolders { get; private set; }
+        public int SubfolderCount  { get; private set; }
+
+        public string[] Chunks     { get; private set; }
+        public int ChunkCount      { get; private set; }
+
+
+        /// <summary> Array Containing Each Scenario In The Form Of A Simple Struct (Top - Bottom / 0 - Last)
+        /// </summary>
         public Scenario[] Scenarios { get; private set; }
-        public struct Scenario {
-            public Scenario(XmlReader gp4Stream) {
-                Type  = gp4Stream.GetAttribute("type");
-                Label = gp4Stream.GetAttribute("label");
-                Id                = int.Parse(gp4Stream.GetAttribute("id"));
-                InitialChunkCount = int.Parse(gp4Stream.GetAttribute("initial_chunk_count"));
-            }
+        public int ScenarioCount    { get; private set; }
 
-            public int Id, InitialChunkCount;
-            public string Type, Label;
-
-        }
+        /// <summary> The .pkg Project's Default Scenario
+        /// </summary>
+        public int DefaultScenarioID { get; private set; }
         #endregion
+
+
 
 
         private void ParseGP4() {
             do {
                 if(gp4.MoveToContent() == XmlNodeType.Element) {
+                    int ind;
 
                     switch(gp4.LocalName) {
                         default: continue;
 
+                        // Get The Current Package Type. Throws An Exception If The volume_type isn't correct
                         case "volume_type":
+                            string PackageType;
+
+                            IsPatchProject = (PackageType = gp4.ReadInnerXml()) == "pkg_ps4_patch";
+
+                            // Check .gp4 Integrity
+                            if(!IsPatchProject && PackageType != "pkg_ps4_app")
+                                throw new InvalidDataException($"Unexpacted Volume Type For PS4 Package: {PackageType}");
+
                             break;
 
                         case "package":
-                            ContentID = gp4.GetAttribute("content_id");
-                            Passcode  = gp4.GetAttribute("passcode");
-                            AppPath   = gp4.GetAttribute("app_path");
+                            BaseAppPkgPath = gp4.GetAttribute("app_path");
+                            ContentID      = gp4.GetAttribute("content_id");
+                            Passcode       = gp4.GetAttribute("passcode");
                             break;
 
                         case "chunk_info":
-                            ScenarioCount  = int.Parse(gp4.GetAttribute("chunk_count"));
-                            ChunkCount     = int.Parse(gp4.GetAttribute("scenario_count"));
+                            ScenarioCount  = int.Parse(gp4.GetAttribute("scenario_count"));
+                            ChunkCount     = int.Parse(gp4.GetAttribute("chunk_count"));
                             break;
 
                         case "chunks":
-                            var Chunks   = new List<string>();
-                            var ChunkIDs = new List<int>();
+                            gp4.Read();
+                            var Chunks  = new List<string>();
+                            ind = 0;
+                            bool tmp(string s) => DLog(s);
 
-                            while(gp4.Read() && gp4.LocalName == "chunk") {
-                                ChunkIDs.Add(int.Parse(gp4.GetAttribute("id")));
+                            // Read All Chunks
+                            while(gp4.MoveToNextAttribute() && tmp($"Local Name: {gp4.LocalName}") && (gp4.LocalName == "" || gp4.LocalName == "chunk")) {
                                 Chunks.Add(gp4.GetAttribute("label"));
+                                ind++;
                             }
 
-                            this.Chunks   = Chunks.ToArray();
-                            this.ChunkIDs = ChunkIDs.ToArray();
+                            // Check .gp4 Integrity
+                            if(ind != ChunkCount)
+                                throw new InvalidDataException($"ERORR: \"chunk_count\" Attribute Did Not Match Amount Of Chunk Nodes ({ind} != {ChunkCount})");
+
+                            this.Chunks = Chunks.ToArray();
                             break;
 
                         case "scenarios":
-                            DefaultScenarioID = int.Parse(gp4.GetAttribute("default_id"));
-                            
                             var Scenarios = new List<Scenario>();
+                            ind = 0;
 
-                            while(gp4.Read() && gp4.LocalName == "chunk") {
+                            DefaultScenarioID = int.Parse(gp4.GetAttribute("default_id"));
+
+                            // Read All Scenarios
+                            while(gp4.Read() && gp4.LocalName == "scenario") {
                                 Scenarios.Add(new Scenario(gp4));
+                                ind++;
                             }
 
+                            // Check .gp4 Integrity
+                            if(ind != ScenarioCount)
+                                throw new InvalidDataException($"\"scenario_count\" Attribute Did Not Match Amount Of Scenario Nodes ({ind} != {ScenarioCount})");
+                            
                             break;
+
                         case "files":
-                            // Grab All File Paths
+                            var Files = new List<string>();
+                            ind = 0;
+                            var InvalidFiles = string.Empty;
+
+                            while(gp4.Read() && gp4.LocalName == "file") {
+                                Files.Add(gp4.GetAttribute("targ_path"));
+                                FileCount++;
+
+                                // * Check .gp4 Integrity
+                                if(blacklist.Contains(Files.Last())) {
+                                    InvalidFiles += $"{Files.Last()}\n";
+                                    ind++;
+                                }
+                            }
+
+                            // *
+                            if (ind>0)
+                                throw new InvalidDataException($"Invalid File{(ind>1 ? "s " : " ")}In .gp4 Project: {InvalidFiles}");
+
+                            this.Files = Files.ToArray();
+                            break;
+
+                        case "rootdir":
+                            var SubfolderNames = new List<string>();
+                            var Subfolders     = new List<string>();
+                            ind = 0;
+
+                            while(gp4.Read() && gp4.LocalName == "dir") {
+                                SubfolderNames.Add(gp4.GetAttribute("targ_name"));
+
+                                if(ind > 0 && gp4.Depth > ind) // Append Subfolder Name To Parent
+                                    Subfolders.Add($@"{Subfolders[Subfolders.Count - 1]}\{SubfolderNames.Last()}");
+                                else                 
+                                    Subfolders.Add(SubfolderNames.Last()); // Add As New Folder
+
+                                SubfolderCount++;
+                            }
+
+                            if(false)
+                                throw new InvalidDataException($"Unimplemented Error Message");
+
+                            this.SubfolderNames = SubfolderNames.ToArray();
+                            this.Subfolders     = Subfolders.ToArray();
                             break;
                     }
                 }
-                else WLog($"Ignoring: [{gp4.LocalName}]");
             }
             while(gp4.Read());
         }
 
+        public struct Scenario {
+            public Scenario(XmlReader gp4Stream) {
+                Type = gp4Stream.GetAttribute("type");
+                Label = gp4Stream.GetAttribute("label");
+                Id = int.Parse(gp4Stream.GetAttribute("id"));
+                InitialChunkCount = int.Parse(gp4Stream.GetAttribute("initial_chunk_count"));
+            }
+
+            public int Id, InitialChunkCount;
+            public string Type, Label;
+        }
 
         /////////////////\\\\\\\\\\\\\\\\\
         ///--     User Functions     --\\\
@@ -690,7 +795,7 @@ namespace libgp4 { // ver 0.8.25
         private bool FileShouldBeExcluded(string filepath) {
             string filename = string.Empty;
             if(filepath.Contains('.'))
-                filename = filepath.Remove(filepath.LastIndexOf(".")).Substring(filepath.LastIndexOf('\\') + 1);
+                filename = filepath.Remove(filepath.LastIndexOf(".")).Substring(filepath.LastIndexOf('\\') + 1); // Tf Am I Doing Here?
 
             string[] blacklist = new string[] {
                   // Drunk Canadian Guy
