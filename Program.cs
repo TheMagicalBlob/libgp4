@@ -9,7 +9,7 @@ using System.Collections.Generic;
 
 /// <summary> A Small Library For Building .gp4 Files Used In The PS4 .pkg Creation Process, And Reading Info From Already Created Ones
 ///</summary>
-namespace libgp4 { // ver 0.9.31
+namespace libgp4 { // ver 0.12.37
 
     ///////////\\\\\\\\\\\\
     //  GP4READER CLASS  \\
@@ -34,8 +34,7 @@ namespace libgp4 { // ver 0.9.31
         private static XmlReader gp4;
 
         private readonly string Gp4_Path;
-
-        private string[] blacklist = new string[] {
+        private readonly string[] blacklist = new string[] {
                   // Drunk Canadian Guy
                     "right.sprx",
                     "sce_discmap.plt",
@@ -62,18 +61,21 @@ namespace libgp4 { // ver 0.9.31
                     @"sce_sys\target-deltainfo.dat",
                     @"sce_sys\app\playgo-manifest.xml"
             };
+        
         /// <summary> Output Log Messages To The LogTextBox, Followed By A Line Terminator </summary>
         private void WLog(object o) {
+            DLog(o); //!
+
             try {
                 if(EnableConsoleLogging)
                     Console.WriteLine(o as string);
             }
             catch(Exception) { }
-            if(LogTextBox == null) return;
+            //if(LogTextBox == null) return;
 
-            LogTextBox?.AppendText($"{o}\n");
-            LogTextBox?.ScrollToCaret();
+            LogTextBox?.AppendText($"|{o}\n");
             LogTextBox?.Update();
+            LogTextBox?.ScrollToCaret();
         }
         /// <summary> Output Log Messages To The LogTextBox </summary>
         private void ALog(object o) {
@@ -175,8 +177,10 @@ namespace libgp4 { // ver 0.9.31
 
         private void ParseGP4() {
             do {
-                if(gp4.MoveToContent() == XmlNodeType.Element) {
+                var NT = gp4.MoveToContent();
+                if(NT == XmlNodeType.Element) {
                     int ind;
+                    DLog($"Reading Node: {gp4.LocalName}");
 
                     switch(gp4.LocalName) {
                         default: continue;
@@ -195,23 +199,33 @@ namespace libgp4 { // ver 0.9.31
 
                         case "package":
                             BaseAppPkgPath = gp4.GetAttribute("app_path");
-                            ContentID      = gp4.GetAttribute("content_id");
-                            Passcode       = gp4.GetAttribute("passcode");
+                            ContentID = gp4.GetAttribute("content_id");
+                            Passcode = gp4.GetAttribute("passcode");
                             break;
 
                         case "chunk_info":
-                            ScenarioCount  = int.Parse(gp4.GetAttribute("scenario_count"));
-                            ChunkCount     = int.Parse(gp4.GetAttribute("chunk_count"));
+                            ScenarioCount = int.Parse(gp4.GetAttribute("scenario_count"));
+                            ChunkCount = int.Parse(gp4.GetAttribute("chunk_count"));
                             break;
 
                         case "chunks":
                             gp4.Read();
-                            var Chunks  = new List<string>();
+                            DLog("reading chunks");
+                            var Chunks = new List<string>();
                             ind = 0;
-                            bool tmp(string s) => DLog(s);
 
                             // Read All Chunks
-                            while(gp4.MoveToNextAttribute() && tmp($"Local Name: {gp4.LocalName}") && (gp4.LocalName == "" || gp4.LocalName == "chunk")) {
+                            while(gp4.Read()) { //! remove log output
+                                if(gp4.MoveToContent() != XmlNodeType.Element || gp4.LocalName != "chunk") {
+                                    if(gp4.LocalName == "chunks") {
+                                        DLog($"Reached End Of {gp4.LocalName} Loop");
+                                        break;
+                                    }
+
+                                    DLog($"Skipping Item In {gp4.LocalName} Loop");
+                                    continue;
+                                }
+
                                 Chunks.Add(gp4.GetAttribute("label"));
                                 ind++;
                             }
@@ -230,7 +244,17 @@ namespace libgp4 { // ver 0.9.31
                             DefaultScenarioID = int.Parse(gp4.GetAttribute("default_id"));
 
                             // Read All Scenarios
-                            while(gp4.Read() && gp4.LocalName == "scenario") {
+                            while(gp4.Read()) {
+                                if(gp4.MoveToContent() != XmlNodeType.Element || gp4.LocalName != "scenario") {
+                                    if(gp4.LocalName == "scenarios") {
+                                        DLog($"Reached End Of {gp4.LocalName} Loop");
+                                        break;
+                                    }
+
+                                    DLog($"Skipping Item In {gp4.LocalName} Loop");
+                                    continue;
+                                }
+
                                 Scenarios.Add(new Scenario(gp4));
                                 ind++;
                             }
@@ -238,15 +262,35 @@ namespace libgp4 { // ver 0.9.31
                             // Check .gp4 Integrity
                             if(ind != ScenarioCount)
                                 throw new InvalidDataException($"\"scenario_count\" Attribute Did Not Match Amount Of Scenario Nodes ({ind} != {ScenarioCount})");
-                            
+
+                            this.Scenarios = Scenarios.ToArray();
+
+                            WLog($"||{this.Scenarios.Length}| {Scenarios.Count}||");
+
+                            // Check .gp4 Integrity
+                            if(this.Scenarios == null || this.Scenarios.Length == 0)
+                                throw new InvalidDataException($"Seriously?");
+
+
                             break;
 
                         case "files":
+                            gp4.Read();
                             var Files = new List<string>();
                             ind = 0;
                             var InvalidFiles = string.Empty;
 
-                            while(gp4.Read() && gp4.LocalName == "file") {
+                            while(gp4.Read()) {
+                                if(gp4.MoveToContent() != XmlNodeType.Element || gp4.LocalName != "file") {
+                                    if(gp4.LocalName == "files") {
+                                        DLog($"Reached End Of {gp4.LocalName} Loop");
+                                        break;
+                                    }
+
+                                    DLog($"Skipping Item In {gp4.LocalName} Loop");
+                                    continue;
+                                }
+
                                 Files.Add(gp4.GetAttribute("targ_path"));
                                 FileCount++;
 
@@ -258,23 +302,32 @@ namespace libgp4 { // ver 0.9.31
                             }
 
                             // *
-                            if (ind>0)
-                                throw new InvalidDataException($"Invalid File{(ind>1 ? "s " : " ")}In .gp4 Project: {InvalidFiles}");
+                            if(ind > 0)
+                                throw new InvalidDataException($"Invalid File{(ind > 1 ? "s " : " ")}In .gp4 Project: {InvalidFiles}");
 
                             this.Files = Files.ToArray();
                             break;
 
                         case "rootdir":
                             var SubfolderNames = new List<string>();
-                            var Subfolders     = new List<string>();
+                            var Subfolders = new List<string>();
                             ind = 0;
 
-                            while(gp4.Read() && gp4.LocalName == "dir") {
+                            while(gp4.Read()) {
+                                if(gp4.MoveToContent() != XmlNodeType.Element || gp4.LocalName != "dir") {
+                                    if(gp4.LocalName == "rootdir") {
+                                        DLog($"Reached End Of {gp4.LocalName} Loop");
+                                        break;
+                                    }
+
+                                    DLog($"Skipping Item In {gp4.LocalName} Loop");
+                                    continue;
+                                }
                                 SubfolderNames.Add(gp4.GetAttribute("targ_name"));
 
                                 if(ind > 0 && gp4.Depth > ind) // Append Subfolder Name To Parent
                                     Subfolders.Add($@"{Subfolders[Subfolders.Count - 1]}\{SubfolderNames.Last()}");
-                                else                 
+                                else
                                     Subfolders.Add(SubfolderNames.Last()); // Add As New Folder
 
                                 SubfolderCount++;
@@ -284,10 +337,12 @@ namespace libgp4 { // ver 0.9.31
                                 throw new InvalidDataException($"Unimplemented Error Message");
 
                             this.SubfolderNames = SubfolderNames.ToArray();
-                            this.Subfolders     = Subfolders.ToArray();
+                            this.Subfolders = Subfolders.ToArray();
                             break;
                     }
                 }
+                else
+                    DLog($"Skipping {gp4.NodeType} Node: {gp4.LocalName}");
             }
             while(gp4.Read());
         }
