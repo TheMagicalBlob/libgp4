@@ -9,7 +9,7 @@ using System.Collections.Generic;
 
 /// <summary> A Small Library For Building .gp4 Files Used In The PS4 .pkg Creation Process, And Reading Info From Already Created Ones
 ///</summary>
-namespace libgp4 { // ver 0.12.37
+namespace libgp4 { // ver 0.13.38
 
     ///////////\\\\\\\\\\\\
     //  GP4READER CLASS  \\
@@ -331,6 +331,7 @@ namespace libgp4 { // ver 0.12.37
                                     Subfolders.Add(SubfolderNames.Last()); // Add As New Folder
 
                                 SubfolderCount++;
+                                ind = gp4.Depth;
                             }
 
                             if(false)
