@@ -218,7 +218,7 @@ namespace libgp4 { // ver 0.13.41
                         ///
                         case "chunks": {
                             gp4.Read();
-                            DLog("reading chunks");
+                            DLog("\nPARSING \"CHUNKS\" CONTENTS");
                             var Chunks = new List<string>();
                             ind = 0;
 
@@ -230,7 +230,9 @@ namespace libgp4 { // ver 0.13.41
                                         break;
                                     }
 
-                                    DLog($"Skipping Item In {gp4.LocalName} Loop");
+                                    if(gp4.LocalName != string.Empty)
+                                        DLog($"Skipping Item In {gp4.LocalName} Loop");
+
                                     continue;
                                 }
 
@@ -249,6 +251,7 @@ namespace libgp4 { // ver 0.13.41
                         // Parse The Contents Of "Files" Node
                         ///
                         case "scenarios": {
+                            DLog("\nPARSING \"SCENARIOS\" CONTENTS");
                             var Scenarios = new List<Scenario>();
                             ind = 0;
 
@@ -262,7 +265,9 @@ namespace libgp4 { // ver 0.13.41
                                         break;
                                     }
 
-                                    DLog($"Skipping Item In {gp4.LocalName} Loop");
+                                    if (gp4.LocalName != string.Empty)
+                                        DLog($"Skipping Item In {gp4.LocalName} Loop");
+                                    
                                     continue;
                                 }
 
@@ -289,6 +294,7 @@ namespace libgp4 { // ver 0.13.41
                         // Parse The Contents Of "Files" Node
                         ///
                         case "files": {
+                            DLog("\nPARSING \"FILES\" CONTENTS");
                             gp4.Read();
                             var Files = new List<string>();
                             ind = 0;
@@ -301,7 +307,9 @@ namespace libgp4 { // ver 0.13.41
                                         break;
                                     }
 
-                                    DLog($"Skipping Item In {gp4.LocalName} Loop");
+                                    if(gp4.LocalName != string.Empty)
+                                        DLog($"Skipping Item In {gp4.LocalName} Loop");
+
                                     continue;
                                 }
 
@@ -326,6 +334,7 @@ namespace libgp4 { // ver 0.13.41
                         // Parse The Contents Of "Files" Node
                         ///
                         case "rootdir": {
+                            DLog("\nPARSING \"ROOTDIR\" CONTENTS");
                             var SubfolderNames = new List<string>();
                             var Subfolders = new List<string>();
                             ind = 0;
@@ -337,7 +346,9 @@ namespace libgp4 { // ver 0.13.41
                                         break;
                                     }
 
-                                    DLog($"Skipping Item In {gp4.LocalName} Loop");
+                                    if(gp4.LocalName != string.Empty)
+                                        DLog($"Skipping Item In {gp4.LocalName} Loop");
+
                                     continue;
                                 }
                                 SubfolderNames.Add(gp4.GetAttribute("targ_name"));
@@ -359,6 +370,10 @@ namespace libgp4 { // ver 0.13.41
                             break;
                         }
                     }
+                }
+                else if(NT == XmlNodeType.EndElement && gp4.LocalName == "psproject") {
+                    DLog("Reached End Of .gp4 Project");
+                    return;
                 }
                 else
                     DLog($"Skipping {NT} Node: {gp4.LocalName}");
