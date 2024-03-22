@@ -9,7 +9,8 @@ using System.Collections.Generic;
 
 /// <summary> A Small Library For Building .gp4 Files Used In The PS4 .pkg Creation Process, And Reading Info From Already Created Ones
 ///</summary>
-namespace libgp4 { // ver 0.13.41
+namespace libgp4 { // ver 0.13.50
+    
 
     ///////////\\\\\\\\\\\\
     //  GP4READER CLASS  \\
@@ -19,21 +20,80 @@ namespace libgp4 { // ver 0.13.41
             StreamReader gp4_file = new StreamReader(gp4_path);
 
             gp4_file.ReadLine(); // Skip First Line To Avoid A Version Conflict
-            gp4 = XmlReader.Create(gp4_file);
             LogTextBox = LogWindow;
-            Gp4_Path = gp4_path;
+            ParseGP4(XmlReader.Create(gp4_file));
 
-            ParseGP4(gp4);
+            #if DEBUG
+            Gp4_Path = gp4_path;
+            #endif
         }
 
 
+        /// <summary>
+        ///     Optional Rich Text Box Control To Use As A Log For The Creation Process
+        /// </summary>
+        public RichTextBox LogTextBox;
 
         ////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\
         ///--     Internal Variables / Methods     --\\\
         ////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\
-        private static XmlReader gp4;
 
+#if DEBUG
+        /// <summary> xmlreader familiarization tests
+        ///</summary>
         private readonly string Gp4_Path;
+        public void DebugReader() {
+            var gp4 = XmlReader.Create(Gp4_Path);
+
+            string D_Horizontal_Padding;
+
+            try {
+                if(gp4.ReadState == ReadState.EndOfFile) {
+                    StreamReader gp4_file = new StreamReader(Gp4_Path);
+                    gp4_file.ReadLine();
+                    gp4 = XmlReader.Create(gp4_file);
+                    LogTextBox.Clear();
+                }
+                var Name = string.Empty;
+
+                do {
+                    gp4.MoveToContent();
+
+                    D_Horizontal_Padding = string.Empty;
+                    for(int i = gp4.Depth; i > 0; i--)
+                        D_Horizontal_Padding += "    ";
+
+                    if(gp4.NodeType == XmlNodeType.EndElement) {
+                        WLog($"{D_Horizontal_Padding}</{gp4.LocalName}>");
+                        continue;
+                    }
+
+                    else Name = $"({gp4.NodeType})~{gp4.LocalName}";
+
+                    if(gp4.MoveToFirstAttribute()) {
+                        ALog($"{D_Horizontal_Padding}<{Name}");
+
+                        do ALog($" ({gp4.NodeType})~{(gp4.HasValue ? $" {gp4.Name}: {gp4.Value}" : $"({gp4.NodeType})")}");
+                        while(gp4.MoveToNextAttribute());
+
+                        ALog('>');
+                    }
+                    else if(gp4.NodeType == XmlNodeType.Text) ALog($"{D_Horizontal_Padding}{gp4.Value}");
+
+                    WLog("");
+
+                } while(gp4.Read());
+
+
+                if(gp4.ReadState == ReadState.EndOfFile) WLog("End Of .gp4 Reached");
+            }
+            catch(Exception error) {
+                WLog($"{error.Message}\n{error.StackTrace}");
+                return;
+            }
+        }
+        #endif
+       
         private readonly string[] ProjectFileBlacklist = new string[] {
                   // Drunk Canadian Guy
                     "right.sprx",
@@ -62,60 +122,54 @@ namespace libgp4 { // ver 0.13.41
                     @"sce_sys\app\playgo-manifest.xml"
         };
         
+        private bool EnableConsoleLogging = true;
+
         /// <summary> Output Log Messages To The LogTextBox, Followed By A Line Terminator </summary>
         private void WLog(object o) {
+            #if DEBUG
             DLog(o); //!
+            #endif
+            
+            if(EnableConsoleLogging)
+                try { Console.WriteLine(o as string); }
+                catch(Exception) { EnableConsoleLogging = false; }
 
-            try {
-                if(EnableConsoleLogging)
-                    Console.WriteLine(o as string);
+            if(LogTextBox != null) {
+                LogTextBox?.AppendText($"{o}\n");
+                LogTextBox?.ScrollToCaret();
+                LogTextBox?.Update();
             }
-            catch(Exception) { }
-            //if(LogTextBox == null) return;
-
-            LogTextBox?.AppendText($"|{o}\n");
-            LogTextBox?.Update();
-            LogTextBox?.ScrollToCaret();
         }
         /// <summary> Output Log Messages To The LogTextBox </summary>
         private void ALog(object o) {
-            try {
-                if(EnableConsoleLogging)
-                    Console.WriteLine(o as string);
-            }
-            catch(Exception) { }
-            if(LogTextBox == null) return;
+            #if DEBUG
+            DLog(o); //!
+            #endif
 
-            LogTextBox?.AppendText($"{o}");
-            LogTextBox?.ScrollToCaret();
-            LogTextBox?.Update();
+            if(EnableConsoleLogging)
+                try { Console.Write(o as string); }
+                catch(Exception) { EnableConsoleLogging = false; }
+
+            if(LogTextBox != null) {
+                LogTextBox?.AppendText($"{o}");
+                LogTextBox?.ScrollToCaret();
+                LogTextBox?.Update();
+            }
         }
 
-        private static bool DLog(object o) {
+        private static void DLog(object o) {
             try { Debug.WriteLine(o as string); }
             catch(Exception){}
 
             try { Console.WriteLine(o as string); }
             catch(Exception){}
-
-            return true;//!
         }
         /////////////////////////////////////|
 
 
 
 
-        ////////////////\\\\\\\\\\\\\\\\
-        ///--     User Options     --\\\ (User Accessed)
-        ////////////////\\\\\\\\\\\\\\\\
-        #region User Options / Variables
 
-        /// <summary> Optional Rich Text Box Control To Use As A Log For The Creation Process </summary>
-        public RichTextBox LogTextBox;
-
-        /// <summary> Outputs Log Messages To The Standard Console Output Prior To The Log Control </summary>
-        public bool EnableConsoleLogging;
-        #endregion
 
 
         //////////////////////\\\\\\\\\\\\\\\\\\\\\
@@ -131,11 +185,16 @@ namespace libgp4 { // ver 0.13.41
         /// </summary>
         public string BaseAppPkgPath { get; private set; }
 
+
         /// <summary> Password For The Package To Be Made
         /// </summary>
         public string Passcode { get; private set; }
 
+
+        /// <summary> True If The .gp4 Project Is For A Patch .pkg, False Otherwise.
+        ///</summary>
         public bool IsPatchProject { get; private set; }
+
 
         /// <summary>
         /// Content ID Of The .gp4 Project's Game
@@ -144,20 +203,25 @@ namespace libgp4 { // ver 0.13.41
         /// </summary>
         public string ContentID { get; private set; }
 
+
         /// <summary> Array Of All Files Listed In The .gp4 Project
         /// </summary>
         public string[] Files { get; private set; }
         public int FileCount  { get; private set; }
 
+
         /// <summary> Names Of Each Individual Folder Within The Project Folder, As Well As Any Subfolders As Stored In The .gp4
         /// </summary>
         public string[] SubfolderNames { get; private set; }
 
-        /// <summary> Each Individual Folder/Subfolder Within The Project Folder
-        /// </summary>
+        /// <summary> Each Individual Folder/Subfolder Within The Project Folder </summary>
         public string[] Subfolders { get; private set; }
         public int SubfolderCount  { get; private set; }
 
+
+        /// <summary>
+        /// Array Containing Chunk Data For The Selected .gp4 Project File
+        /// </summary>
         public string[] Chunks     { get; private set; }
         public int ChunkCount      { get; private set; }
 
@@ -167,15 +231,18 @@ namespace libgp4 { // ver 0.13.41
         public Scenario[] Scenarios { get; private set; }
         public int ScenarioCount    { get; private set; }
 
-        /// <summary> The .pkg Project's Default Scenario
-        /// </summary>
+        /// <summary> The .pkg Project's Default Scenario </summary>
         public int DefaultScenarioID { get; private set; }
         #endregion
 
 
 
         /// <summary>
-        /// 
+        /// Check Each Node And Blah Blah Blah Blow Me
+        /// <br/>
+        /// Throws An <paramref name="InvalidDataException"/> If Invalid Attribute Values Are Found
+        /// <br/>
+        /// (Like If Invalid Files Have Been Added To The .gp4, Or There Are Conflicting Variables For The Package Type)
         /// </summary>
         /// <exception cref="InvalidDataException"/>
         private void ParseGP4(XmlReader gp4) {
@@ -372,7 +439,9 @@ namespace libgp4 { // ver 0.13.41
                     }
                 }
                 else if(NT == XmlNodeType.EndElement && gp4.LocalName == "psproject") {
+                    #if DEBUG
                     DLog("Reached End Of .gp4 Project");
+                    #endif
                     return;
                 }
                 else
@@ -381,16 +450,29 @@ namespace libgp4 { // ver 0.13.41
             while(gp4.Read());
         }
 
+
+
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <paramref name="Type">DISPLAY THIS XML, DAMN YOU<param/>
+        /// <cref name="Type">DISPLAY THIS XML, DAMN YOU<param/>
         public struct Scenario {
             public Scenario(XmlReader gp4Stream) {
                 Type = gp4Stream.GetAttribute("type");
                 Label = gp4Stream.GetAttribute("label");
                 Id = int.Parse(gp4Stream.GetAttribute("id"));
                 InitialChunkCount = int.Parse(gp4Stream.GetAttribute("initial_chunk_count"));
+                ChunkRange = gp4Stream.ReadInnerXml();
             }
 
             public int Id, InitialChunkCount;
+
             public string Type, Label;
+
+            /// <summary> NOTE: No Idea If My Own Tool Creats This Properly,<br/>But It Won't Matter Unless You're Trying To Burn The Created .pkg To A Disc, Anyway</summary>
+            public string ChunkRange;
         }
 
         /////////////////\\\\\\\\\\\\\\\\\
@@ -427,7 +509,7 @@ namespace libgp4 { // ver 0.13.41
                 GP4File.ReadLine();
                 string Out = null;
 
-                using (gp4 = XmlReader.Create(GP4File))
+                using (var gp4 = XmlReader.Create(GP4File))
                 while(gp4.Read())
                     if(gp4.LocalName == NodeName && (Out = gp4.GetAttribute(AttributeName)) != null)
                         return Out;
@@ -437,75 +519,6 @@ namespace libgp4 { // ver 0.13.41
             }
         }
         #endregion
-
-
-
-#if DEBUG
-        /// <summary> xmlreader familiarization tests /</summary>
-        public void DebugReader(XmlReader gp4) {
-            string D_Horizontal_Padding;
-
-            void WPLog(object o) {
-                if(EnableConsoleLogging)
-                    Console.WriteLine(o as string);
-
-                LogTextBox?.AppendText($"{D_Horizontal_Padding}{o}\n");
-                LogTextBox?.ScrollToCaret();
-            }
-            void APLog(object o) {
-                if(EnableConsoleLogging)
-                    Console.WriteLine(o as string);
-
-                LogTextBox?.AppendText($"{D_Horizontal_Padding}{o}");
-                LogTextBox?.ScrollToCaret();
-            }
-
-            try {
-                if(gp4.ReadState == ReadState.EndOfFile) {
-                    StreamReader gp4_file = new StreamReader(Gp4_Path);
-                    gp4_file.ReadLine();
-                    gp4 = XmlReader.Create(gp4_file);
-                    LogTextBox.Clear();
-                }
-                var Name = string.Empty;
-
-                do {
-                    gp4.MoveToContent();
-
-                    D_Horizontal_Padding = string.Empty;
-                    for(int i = gp4.Depth; i > 0; i--)
-                        D_Horizontal_Padding += "    ";
-
-                    if(gp4.NodeType == XmlNodeType.EndElement) {
-                        WPLog($"</{gp4.LocalName}>");
-                        continue;
-                    }
-                    
-                    else Name = $"({gp4.NodeType})~{gp4.LocalName}";
-
-                    if(gp4.MoveToFirstAttribute()) {
-                        APLog($"<{Name}");
-                        
-                        do ALog($" ({gp4.NodeType})~{(gp4.HasValue ? $" {gp4.Name}: {gp4.Value}" : $"({gp4.NodeType})")}");
-                        while(gp4.MoveToNextAttribute());
-                        
-                        ALog('>');
-                    }
-                    else if(gp4.NodeType == XmlNodeType.Text) APLog(gp4.Value);
-
-                    WLog("");
-
-                } while(gp4.Read());
-
-
-                if(gp4.ReadState == ReadState.EndOfFile) WLog("End Of .gp4 Reached");
-            }
-            catch(Exception error) {
-                WLog($"{error.Message}\n{error.StackTrace}");
-                return;
-            }
-        }
-#endif
     }
 
 
