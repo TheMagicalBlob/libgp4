@@ -4,4 +4,8 @@
     <StartAction>Program</StartAction>
     <StartProgram>D:\sc\Gp4ProjectBuilder\bin\Debug\GP4 GUI.exe</StartProgram>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Release|AnyCPU'">
+    <StartAction>Program</StartAction>
+    <StartProgram>D:\sc\Gp4ProjectBuilder\bin\Debug\GP4 GUI.exe</StartProgram>
+  </PropertyGroup>
 </Project>
