@@ -13,3 +13,4 @@ D:\sc\Naughty-Dog Debug Mode Patch Tool\bin\libgp4.pdb
 D:\sc\Gp4ProjectBuilder\bin\Debug\libgp4.dll.config
 D:\sc\Gp4ProjectBuilder\bin\Debug\libgp4.dll
 D:\sc\Gp4ProjectBuilder\bin\Debug\libgp4.pdb
+D:\sc\Gp4ProjectBuilder\bin\Debug\libgp4.xml

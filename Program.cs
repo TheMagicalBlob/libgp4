@@ -6,28 +6,43 @@ using System.Text;
 using System.Xml;
 using System.Windows.Forms;
 using System.Collections.Generic;
+#pragma warning disable CS1591
+#pragma warning disable CS1587
+
 
 /// <summary> A Small Library For Building .gp4 Files Used In The PS4 .pkg Creation Process, And Reading Info From Already Created Ones
 ///</summary>
-namespace libgp4 { // ver 0.14.55
+namespace libgp4 { // ver 0.14.57
 
 
     ///////////\\\\\\\\\\\\
     //  GP4READER CLASS  \\
     ///////////\\\\\\\\\\\\
+
+    /// <summary> Small Class For Grabbing Data From .gp4 Projects.<br/><br/>
+    /// Create A New Instance To Parse And Return All Relevant Data From The .gp4 File.<br/>
+    /// Alternatively, Individual Variables Can Be Read Alone Through Static Methods.  <br/>
+    ///</summary>
     public class GP4Reader {
+
+        /// <summary>
+        /// Create A New Instance Of The GP4Reader Class To Parse And Return All Relevant Data From.<br/><br/>
+        /// Skips Passed The First Line To Avoid A Version Conflict (The XmlReader Class Doesn't Like 1.1),<br/>
+        /// Then Parses The Given Project File For All Relevant .gp4 Data. Also Checks For Possible Errors.
+        /// </summary>
+        /// <param name="gp4_path"> The Absolute Path To The .gp4 Project File </param>
+        /// <param name="LogWindow"> An Optional RichTextBox Control To Output Console Output To </param>
         public GP4Reader(string gp4_path, RichTextBox LogWindow = null) {
-            StreamReader gp4_file = new StreamReader(gp4_path);
+            var gp4_file = new StreamReader(gp4_path);
 
-            gp4_file.ReadLine(); // Skip First Line To Avoid A Version Conflict
-            LogTextBox = LogWindow;
-            ParseGP4(XmlReader.Create(gp4_file));
+            gp4_file.ReadLine();                  // Skip First Line To Avoid A Version Conflict
+            LogTextBox = LogWindow;               // Assign Output To Passed Control (Or null, If None Was Given)
+            ParseGP4(XmlReader.Create(gp4_file)); // Read All Data Someone Might Want To Grab From The .gp4 For Whatevr Reason
 
-#if DEBUG
-            Gp4_Path = gp4_path;
+            #if DEBUG
+            this.gp4_path = gp4_path;             // Save .gp4 Path For Debugging Stuffs
 #endif
         }
-
 
         /// <summary>
         ///     Optional Rich Text Box Control To Use As A Log For The Creation Process
@@ -41,15 +56,16 @@ namespace libgp4 { // ver 0.14.55
 #if DEBUG
         /// <summary> xmlreader familiarization tests
         ///</summary>
-        private readonly string Gp4_Path;
+        private readonly string gp4_path;
+        /// <summary> Tests </summary>
         public void DebugReader() {
-            var gp4 = XmlReader.Create(Gp4_Path);
+            var gp4 = XmlReader.Create(gp4_path);
 
             string D_Horizontal_Padding;
 
             try {
                 if(gp4.ReadState == ReadState.EndOfFile) {
-                    StreamReader gp4_file = new StreamReader(Gp4_Path);
+                    StreamReader gp4_file = new StreamReader(gp4_path);
                     gp4_file.ReadLine();
                     gp4 = XmlReader.Create(gp4_file);
                     LogTextBox.Clear();
@@ -156,7 +172,7 @@ namespace libgp4 { // ver 0.14.55
                 LogTextBox?.Update();
             }
         }
-
+        /// <summary> Console Logging </summary>
         private static void DLog(object o) {
             try { Debug.WriteLine(o as string); }
             catch(Exception) { }
@@ -170,8 +186,7 @@ namespace libgp4 { // ver 0.14.55
 
 
 
-
-
+        #region FULL PARSE
         //////////////////////\\\\\\\\\\\\\\\\\\\\\
         ///--     GP4 Attributes / Values     --\\\ (User Accessed)
         //////////////////////\\\\\\\\\\\\\\\\\\\\\
@@ -239,7 +254,7 @@ namespace libgp4 { // ver 0.14.55
         /// <summary>
         /// Parse Each .gp4 Node For Relevant PS4 .gp4 Project Data.
         /// <br/><br/>
-        /// Throws An <paramref name="InvalidDataException"/> If Invalid Attribute Values Are Found.
+        /// Throws An InvalidDataException If Invalid Attribute Values Are Found.
         /// <br/><br/>
         /// (For Example: If Invalid Files Have Been Added To The .gp4's File Listing, Or There Are Conflicting Variables For<br/>
         /// The Package Type Because Of gengp4.exe Being A Pile Of Arse.)
@@ -491,11 +506,13 @@ namespace libgp4 { // ver 0.14.55
             ///  <summary> NOTE: No Idea If My Own Tool Creates This Attribute Properly,<br/>But If It Doesn't, It Won't Matter Unless You're Trying To Burn The Created .pkg To A Disc, Anyway</summary>
             public string ChunkRange;
         }
+        #endregion
 
-        /////////////////\\\\\\\\\\\\\\\\\
-        ///--     User Functions     --\\\
-        /////////////////\\\\\\\\\\\\\\\\\
-        #region User Functions
+
+        ////////////////////\\\\\\\\\\\\\\\\\\\\\
+        ///--     Static User Functions     --\\\
+        ////////////////////\\\\\\\\\\\\\\\\\\\\\
+        #region Static User Functions
 
         /// <returns> The Passcode The .pkg Will Be Encrypted With (Pointless On fpkg's, Does Not Prevent Dumping, Only orbis-pub-chk extraction)
         ///</returns>
@@ -505,6 +522,7 @@ namespace libgp4 { // ver 0.14.55
         ///</returns>
         public static string GetBasePkgPath(string GP4Path) => GetAttribute(GP4Path, "package", "app_path");
 
+        /// <summary>s</summary>
         /// <returns> The Path Of The Base Game Package The .gp4 Project File's Patch Is To Be Married With
         ///</returns>
         public static string[] GetFileListing(string GP4Path) => GetAttributes(GP4Path, "file", "targ_path");
@@ -512,9 +530,9 @@ namespace libgp4 { // ver 0.14.55
 
 
 
-        /// <summary> Open A .gp4 at The Specified GP4Path and Read AttributeName </summary>
+        /// <summary> Open A .gp4 at The Specified Path and Read The The Value Of "AttributeName" At The Given Parent Node </summary>
         /// 
-        /// <param name="GP4Path"> An Absolute Or Relative Path To The .gp4 File</param>
+        /// <param name="GP4Path"> The Absolute Or Relative Path To The .gp4 File</param>
         /// <param name="NodeName"> Attribute's Parent Node </param>
         /// <param name="AttributeName"> The Attribute To Read And Return </param>
         /// <returns> The Value Of The Specified Attribute If Successfully Found, string.Empty Otherwise </returns>
