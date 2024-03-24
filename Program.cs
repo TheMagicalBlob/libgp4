@@ -12,7 +12,7 @@ using System.Collections.Generic;
 
 /// <summary> A Small Library For Building .gp4 Files Used In The PS4 .pkg Creation Process, And Reading Info From Already Created Ones
 ///</summary>
-namespace libgp4 { // ver 1.16.69
+namespace libgp4 { // ver 1.16.70
 
 
     ///////////\\\\\\\\\\\\
@@ -39,6 +39,54 @@ namespace libgp4 { // ver 1.16.69
             }
         }
 
+        /// <summary>
+        /// Small Struct For Scenario Node Attributes.
+        /// <br/><br/>
+        /// Members:
+        /// <br/> [string] Type
+        /// <br/> [string] Label
+        /// <br/> [int] Id
+        /// <br/> [int] InitialChunkCount
+        /// <br/> [string] ChunkRange
+        ///</summary>
+        public struct Scenario { //! TRY TO ADD MORE DESCRIPTIVE SUMMARIES
+            public Scenario(XmlReader gp4Stream) {
+                Type = gp4Stream.GetAttribute("type");
+                Label = gp4Stream.GetAttribute("label");
+                Id = int.Parse(gp4Stream.GetAttribute("id"));
+                InitialChunkCount = int.Parse(gp4Stream.GetAttribute("initial_chunk_count"));
+                ChunkRange = gp4Stream.ReadInnerXml();
+            }
+
+            /// <summary>
+            /// The Type Of The Selected Game Scenario. (E.G. sp / mp)
+            /// </summary>
+            public string Type;
+
+            /// <summary>
+            /// The Label/Name Of The Selected Game Scenario.
+            /// </summary>
+            public string Label;
+
+            /// <summary>
+            /// Id Of The Selected Game Scenario.
+            /// </summary>
+            public int Id;
+
+            /// <summary>
+            /// The Initial Chunk Count Of The Selected Game Scenario.
+            /// </summary>
+            public int InitialChunkCount;
+
+            ///  <summary>
+            /// The Chunk Range For The Selected Game Scenario.
+            /// 
+            /// <br/><br/>
+            ///  NOTE: No Idea If My Own Tool Creates This Attribute Properly,
+            ///  <br/>But If It Doesn't, It Won't Matter Unless You're Trying To Burn The Created .pkg To A Disc, Anyway
+            ///  </summary>
+            public string ChunkRange;
+        }
 
         ////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\
         ///--     Internal Variables / Methods     --\\\
@@ -445,7 +493,7 @@ namespace libgp4 { // ver 1.16.69
         /// <summary> Check Various Parts Of The .gp4 To Try And Find Any Possible Errors In The Project File.
         ///</summary>
         /// <returns> False If Nothing's Wrong. Throws An InvalidDataException Otherwise. </returns>
-        public bool CheckGP4Integrity() {
+        public bool CheckGP4Integrity() { //! FINISH ME
             var Errors = string.Empty;
 
             // Check Passcode Validity
@@ -489,48 +537,7 @@ namespace libgp4 { // ver 1.16.69
                 throw new InvalidDataException(Message);
             }
 
-
-            return false;
-        }
-
-
-        /// <summary>
-        /// Small Struct For Scenario Node Attributes.
-        /// <br/><br/>
-        /// Members:
-        ///<list type="bullet">
-        ///  <item>
-        ///    <term>[string] Type</term>
-        ///    <description>Scenario Game Type (E.G. sp / mp)</description>
-        ///  </item>
-        ///  <item>
-        ///    <term>[string] Label</term>
-        ///    <description>The Name Of The Scenario</description>
-        ///  </item>
-        ///  <item>
-        ///    <term>[int] Id</term>
-        ///    <description>Scenario Id/Index</description>
-        ///  </item>
-        ///  <item> [int] InitialChunkCount </item>
-        ///  <item> <term>[string] ChunkRange</term>
-        ///  <description> NOTE: No Idea If My Own Tool Creates This Attribute Properly,<br/>But If It Doesn't, It Won't Matter Unless You're Trying To Burn The Created .pkg To A Disc, Anyway</description> </item>
-        ///</list>
-        ///</summary>
-        public struct Scenario {
-            public Scenario(XmlReader gp4Stream) {
-                Type = gp4Stream.GetAttribute("type");
-                Label = gp4Stream.GetAttribute("label");
-                Id = int.Parse(gp4Stream.GetAttribute("id"));
-                InitialChunkCount = int.Parse(gp4Stream.GetAttribute("initial_chunk_count"));
-                ChunkRange = gp4Stream.ReadInnerXml();
-            }
-
-            public int Id, InitialChunkCount;
-
-            public string Type, Label;
-
-            ///  <summary> NOTE: No Idea If My Own Tool Creates This Attribute Properly,<br/>But If It Doesn't, It Won't Matter Unless You're Trying To Burn The Created .pkg To A Disc, Anyway</summary>
-            public string ChunkRange;
+            return false; // No Errors Were Found
         }
         #endregion
 
