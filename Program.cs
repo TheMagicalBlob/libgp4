@@ -12,7 +12,7 @@ using System.Collections.Generic;
 
 /// <summary> A Small Library For Building .gp4 Files Used In The PS4 .pkg Creation Process, And Reading Info From Already Created Ones
 ///</summary>
-namespace libgp4 { // ver 1.18.75
+namespace libgp4 { // ver 1.19.78
 
 
     ///////////\\\\\\\\\\\\
@@ -29,10 +29,11 @@ namespace libgp4 { // ver 1.18.75
     ///</summary>
     public class GP4Reader {
 
+
         /// <summary>
-        /// Create A New Instance Of The GP4Reader Class With A Given .gp4 File.<br/><br/>
-        /// Skips Passed The First Line To Avoid A Version Conflict (The XmlReader Class Doesn't Like 1.1),<br/>
-        /// Then Parses The Given Project File For All Relevant .gp4 Data. Also Checks For Possible Errors.
+        ///  Create A New Instance Of The GP4Reader Class With A Given .gp4 File.<br/><br/>
+        ///  Skips Passed The First Line To Avoid A Version Conflict (The XmlReader Class Doesn't Like 1.1),<br/>
+        ///  Then Parses The Given Project File For All Relevant .gp4 Data. Also Checks For Possible Errors.
         /// </summary>
         /// <param name="gp4_path"> The Absolute Path To The .gp4 Project File </param>
         /// <param name="AssertOnErrorFound">
@@ -48,15 +49,16 @@ namespace libgp4 { // ver 1.18.75
             }
         }
 
+
         /// <summary>
-        /// Small Struct For Scenario Node Attributes.
-        /// <br/><br/>
-        /// Members:
-        /// <br/> [string] Type
-        /// <br/> [string] Label
-        /// <br/> [int] Id
-        /// <br/> [int] InitialChunkCount
-        /// <br/> [string] ChunkRange
+        ///  Small Struct For Scenario Node Attributes.
+        ///  <br/><br/>
+        ///  Members:
+        ///  <br/> [string] Type
+        ///  <br/> [string] Label
+        ///  <br/> [int] Id
+        ///  <br/> [int] InitialChunkCount
+        ///  <br/> [string] ChunkRange
         ///</summary>
         public struct Scenario { //! TRY TO ADD MORE DESCRIPTIVE SUMMARIES
             public Scenario(XmlReader gp4Stream) {
@@ -68,28 +70,28 @@ namespace libgp4 { // ver 1.18.75
             }
 
             /// <summary>
-            /// The Type Of The Selected Game Scenario. (E.G. sp / mp)
+            ///  The Type Of The Selected Game Scenario. (E.G. sp / mp)
             /// </summary>
             public string Type;
 
             /// <summary>
-            /// The Label/Name Of The Selected Game Scenario.
+            ///  The Label/Name Of The Selected Game Scenario.
             /// </summary>
             public string Label;
 
             /// <summary>
-            /// Id Of The Selected Game Scenario.
+            ///  Id Of The Selected Game Scenario.
             /// </summary>
             public int Id;
 
             /// <summary>
-            /// The Initial Chunk Count Of The Selected Game Scenario.
+            ///  The Initial Chunk Count Of The Selected Game Scenario.
             /// </summary>
             public int InitialChunkCount;
 
             ///  <summary>
-            /// The Chunk Range For The Selected Game Scenario.
-            /// <br/><br/>
+            ///  The Chunk Range For The Selected Game Scenario.
+            ///  <br/><br/>
             ///  NOTE: No Idea If My Own Tool Creates This Attribute Properly,
             ///  <br/>But If It Doesn't, It Won't Matter Unless You're Trying To Burn The Created .pkg To A Disc, Anyway
             ///  </summary>
@@ -131,7 +133,7 @@ namespace libgp4 { // ver 1.18.75
                     @"sce_sys\app\playgo-manifest.xml"
         };
 
-        private readonly string AssertionMessage = $"An Error Occured When Reading Attribute From The Following Node: $|$\nMessage: %|%";
+        private static readonly string AssertionMessage = $"An Error Occured When Reading Attribute From The Following Node: $|$\nMessage: %|%";
 
         /// <summary> Catch DLog Errors And Disable It If It Fails
         ///</summary>
@@ -160,7 +162,7 @@ namespace libgp4 { // ver 1.18.75
 #endif
         }
         /// <summary> Error Logging </summary>
-        private void ELog(string NodeName, string Error) {
+        private static void ELog(string NodeName, string Error) {
             var Message = (AssertionMessage.Replace("$|$", NodeName)).Replace("%|%", Error);
 
             try { Debug.WriteLine("libgp4.dll: " + Message); }
@@ -625,6 +627,10 @@ namespace libgp4 { // ver 1.18.75
         #endregion
 
 
+
+
+
+
         ////////////////////\\\\\\\\\\\\\\\\\\\\\
         ///--     Static User Functions     --\\\
         ////////////////////\\\\\\\\\\\\\\\\\\\\\
@@ -652,6 +658,56 @@ namespace libgp4 { // ver 1.18.75
         /// <returns> The Path Of The Base Game Package The .gp4 Project File's Patch Is To Be Married With
         ///</returns>
         public static string GetBasePkgPath(string GP4Path) => GetAttribute(GP4Path, "package", "app_path");
+
+
+        ///<summary>
+        ///
+        ///</summary>
+        /// <param name="GP4Path"> Absolute Path To The .gp4 File Being Checked </param>
+        /// <returns> A String Array Containing Full Paths To All Game Chunks Listed In The .gp4 Project
+        ///</returns>
+        public static string[] GetChunkListing(string GP4Path) => GetAttributes(GP4Path, "chunk", "label");
+
+        ///<summary>
+        ///
+        ///</summary>
+        /// <param name="GP4Path"> Absolute Path To The .gp4 File Being Checked </param>
+        /// <returns> A String Array Containing Full Paths To All Game Scenarios Listed In The .gp4 Project
+        ///</returns>
+        public static Scenario[] GetScenarioListing(string GP4Path) {
+            var Scenarios = new List<Scenario>();
+
+            using(StreamReader GP4File = new StreamReader(GP4Path)) {
+                GP4File.ReadLine(); // Skip Version Confilct
+
+                using(var gp4 = XmlReader.Create(GP4File)) {
+
+                    while(gp4.Read()) {
+
+                        // Check For End Of "dir" Nodes
+                        if(gp4.MoveToContent() != XmlNodeType.Element || gp4.LocalName != "scenario")
+                            if(gp4.LocalName == "scenarios" && gp4.NodeType == XmlNodeType.EndElement)
+                                break;
+
+                            else continue;
+
+                        Scenarios.Add(new Scenario(gp4));
+                    }
+
+                    // Check .gp4 Integrity
+                    if(Scenarios.Count == 0) {
+                        var Error = $"Could Not Find Any Scenarios In The Selected .gp4 Project";
+
+                        ELog(gp4.LocalName, Error);
+                        throw new InvalidDataException(Error);
+                    }
+                }
+
+                return Scenarios.ToArray();
+            }
+
+        }
+
 
         ///<summary>
         ///
