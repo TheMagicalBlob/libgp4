@@ -12,7 +12,7 @@ using System.Collections.Generic;
 
 /// <summary> A Small Library For Building .gp4 Files Used In The PS4 .pkg Creation Process, And Reading Info From Already Created Ones
 ///</summary>
-namespace libgp4 { // ver 1.17.73
+namespace libgp4 { // ver 1.18.75
 
 
     ///////////\\\\\\\\\\\\
@@ -351,10 +351,9 @@ namespace libgp4 { // ver 1.17.73
         /// </summary>
         /// <exception cref="InvalidDataException"/>
         private void ParseGP4(XmlReader gp4) {
-            while(gp4.Read()) {
-                var CurrentNodeType = gp4.MoveToContent();
+            while(gp4.Read() && !(gp4.MoveToContent() == XmlNodeType.EndElement && gp4.LocalName == "psproject")) {
 
-                if(CurrentNodeType == XmlNodeType.Element) {
+                if(gp4.NodeType == XmlNodeType.Element) {
                     int Indexing;
 
                     switch(gp4.LocalName) { //! REMOVE SWITCH CASE
@@ -570,8 +569,6 @@ namespace libgp4 { // ver 1.17.73
                         }
                     }
                 }
-                else if(CurrentNodeType == XmlNodeType.EndElement && gp4.LocalName == "psproject")
-                    return;
             }
         }
 
