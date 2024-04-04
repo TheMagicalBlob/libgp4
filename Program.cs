@@ -13,7 +13,7 @@ using System.Reflection;
 
 /// <summary> A Small Library For Building .gp4 Files Used In The PS4 .pkg Creation Process, And Reading Info From Already Created Ones
 ///</summary>
-namespace libgp4 { // ver 1.26.95
+namespace libgp4 { // ver 1.26.97
 
 
     ///////////\\\\\\\\\\\\
@@ -647,10 +647,8 @@ namespace libgp4 { // ver 1.26.95
             //| Check "package" Node Attributes |\\
             //===================================\\
             {
-                LazyContentIdCheck();
-                if(!(ContentID == SfoContentId && PlaygoContentId == ContentID)) {
-                    Errors += $"Content Id Error essage\n\n";
-                }
+                if(!LazyContentIdCheck())
+                    Errors += $"Content Id Mismatch In Project.\n .gp4{ContentID}\n .dat{PlaygoContentId}\n .sfo: {SfoContentId}\n\n";
                 
                 if((!IsPatchProject && StorageType != "digital50") || (IsPatchProject && StorageType != "digital25"))
                     Errors +=
@@ -928,8 +926,8 @@ namespace libgp4 { // ver 1.26.95
 
         /// <summary> Does What It Says On The Tin. (Lazily Copied And Stripped GP4Creator Code) </summary>
         /// <returns> True If All Content Ids Match </returns>
-        private void LazyContentIdCheck() {
-            byte[] buff;
+        private bool LazyContentIdCheck() {
+            var buff = new byte[36]; ;
             string[] arr;
             string p1 = "", p2;
             StringBuilder Builder;
@@ -943,10 +941,10 @@ namespace libgp4 { // ver 1.26.95
             if(p1 == "") {
                 DLog($"Param.sfo File Not Found In .gp4 File Listing");
                 SfoContentId = "MissingFromProject";
-                buff = new byte[36];
                 goto jmp;
             }
 
+            if (File.Exists(p1))
             using(var sfo = File.OpenRead(p1)) {
                 buff = new byte[4];
                 sfo.Position = 0x8;
@@ -995,11 +993,14 @@ namespace libgp4 { // ver 1.26.95
             }
 
             jmp:
+            if (File.Exists(p2))
             using(var playgo = File.OpenRead(p2)) {
                 playgo.Position = 0x40;
                 playgo.Read(buff, 0, 36);
                 PlaygoContentId = Encoding.UTF8.GetString(buff);
             }
+
+            return (ContentID == PlaygoContentId && PlaygoContentId == SfoContentId);
         }
 
         /// <summary> Check Various Parts Of The .gp4 To Try And Find Any Possible Errors In The Project File.
