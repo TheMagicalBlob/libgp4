@@ -75,7 +75,7 @@ namespace libgp4 {
         private void CreateFilesElement(string[] file_paths, string gamedata_folder) {
             files = gp4.CreateElement("files");
 
-            for(index = 0; index < file_paths.Length; index++)
+            for(var index = 0; index < file_paths.Length; index++)
             if(!FileShouldBeExcluded(file_paths[index])) {
                 file = gp4.CreateElement("file");
                 file.SetAttribute("targ_path", (file_paths[index].Replace(gamedata_folder + "\\", string.Empty)).Replace('\\', '/'));
@@ -139,9 +139,9 @@ namespace libgp4 {
         /// </summary>
         private void CreateScenariosElement(string[] scenario_labels) {
             scenarios = gp4.CreateElement("scenarios");
-            scenarios.SetAttribute("default_id", $"{default_id}");
+            scenarios.SetAttribute("default_id", $"{default_scenario_id}");
 
-            for(index = 0; index < scenario_count; index++) {
+            for(var index = 0; index < scenario_count; index++) {
                 scenario = gp4.CreateElement("scenario");
 
                 scenario.SetAttribute("id", $"{index}");

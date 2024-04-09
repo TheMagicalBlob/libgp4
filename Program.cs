@@ -923,12 +923,15 @@ namespace libgp4 { // ver 1.26.97
         }
 
 
-        /// <summary> Does What It Says On The Tin. (Lazily Copied And Stripped GP4Creator Code) </summary>
-        /// <returns> True If All Content Ids Match </returns>
+        /// <summary>
+        /// Does What It Says On The Tin. (Lazily Copied And Stripped GP4Creator Code)<br/>
+        /// Extra Line
+        /// </summary>
+        /// <returns> True If The Content Ids In The .gp4 Project File, playgo-chunks.dat, and param.sfo Match </returns>
         private bool LazyContentIdCheck() {
-            var buff = new byte[36]; ;
+            var buff = new byte[36];
             string[] arr;
-            string p1 = "", p2;
+            string p1 = string.Empty, p2;
             StringBuilder Builder;
             int ind, byteIndex = 0;
 
@@ -936,68 +939,74 @@ namespace libgp4 { // ver 1.26.97
                 if(file.Contains("param.sfo"))
                     p1 = file;
 
-            p2 = $"{p1.Remove(p1.LastIndexOf('\\') + 1)}playgo-chunk.dat";
             if(p1 == "") {
                 DLog($"Param.sfo File Not Found In .gp4 File Listing");
-                SfoContentId = "MissingFromProject";
-                goto jmp;
+                SfoContentId = "MissingFromGp4File";
+                goto JMP;
             }
 
-            if (File.Exists(p1))
-            using(var sfo = File.OpenRead(p1)) {
-                buff = new byte[4];
-                sfo.Position = 0x8;
-                sfo.Read(buff, 0, 4);
-                var i0 = BitConverter.ToInt32(buff, 0);
-                sfo.Position = 0x0C;
-                sfo.Read(buff, 0, 4);
-                var i1 = BitConverter.ToInt32(buff, 0);
-                sfo.Position = 0x10;
-                sfo.Read(buff, 0, 4);
-                var i2 = BitConverter.ToInt32(buff, 0);
-                arr = new string[i2];
-                var iA = new int[i2];
-                buff = new byte[i1 - i0];
-                sfo.Position = i0;
-                sfo.Read(buff, 0, buff.Length);
-
-                for(ind = 0; ind < arr.Length; ind++) {
-                    Builder = new StringBuilder();
-
-                    while(buff[byteIndex] != 0)
-                        Builder.Append(Encoding.UTF8.GetString(new byte[] { buff[byteIndex++] })); // Just Take A Byte, You Fussy Prick
-
-                    byteIndex++;
-                    arr[ind] = Builder.ToString();
-                }
-
-                sfo.Position = 0x20;
-                buff = new byte[4];
-                for(ind = 0; ind < i2; sfo.Position += 0x10 - buff.Length) {
+            if(File.Exists(p1))
+                using(var sfo = File.OpenRead(p1)) {
+                    buff = new byte[4];
+                    sfo.Position = 0x8;
                     sfo.Read(buff, 0, 4);
-                    iA[ind] = i1 + BitConverter.ToInt32(buff, 0);
-                    ind++;
+                    var i0 = BitConverter.ToInt32(buff, 0);
+                    sfo.Position = 0x0C;
+                    sfo.Read(buff, 0, 4);
+                    var i1 = BitConverter.ToInt32(buff, 0);
+                    sfo.Position = 0x10;
+                    sfo.Read(buff, 0, 4);
+                    var i2 = BitConverter.ToInt32(buff, 0);
+                    arr = new string[i2];
+                    var iA = new int[i2];
+                    buff = new byte[i1 - i0];
+                    sfo.Position = i0;
+                    sfo.Read(buff, 0, buff.Length);
+
+                    for(ind = 0; ind < arr.Length; ind++) {
+                        Builder = new StringBuilder();
+
+                        while(buff[byteIndex] != 0)
+                            Builder.Append(Encoding.UTF8.GetString(new byte[] { buff[byteIndex++] })); // Just Take A Byte, You Fussy Prick
+
+                        byteIndex++;
+                        arr[ind] = Builder.ToString();
+                    }
+
+                    sfo.Position = 0x20;
+                    buff = new byte[4];
+                    for(ind = 0; ind < i2; sfo.Position += 0x10 - buff.Length) {
+                        sfo.Read(buff, 0, 4);
+                        iA[ind] = i1 + BitConverter.ToInt32(buff, 0);
+                        ind++;
+                    }
+
+                    for(ind = 0; ind < i2; ind++) {
+                        if(arr[ind] != "CONTENT_ID")
+                            continue;
+
+                        buff = new byte[36];
+                        sfo.Position = iA[ind];
+                        sfo.Read(buff, 0, 36);
+
+                        SfoContentId = Encoding.UTF8.GetString(buff);
+                    }
                 }
 
-                for(ind = 0; ind < i2; ind++) {
-                    if(arr[ind] != "CONTENT_ID")
-                        continue;
+            else
+                SfoContentId = "FileNotPresent";
 
-                    buff = new byte[36];
-                    sfo.Position = iA[ind];
-                    sfo.Read(buff, 0, 36);
-                    
-                    SfoContentId = Encoding.UTF8.GetString(buff);
+
+            JMP:
+            if (File.Exists(p2 = $"{p1.Remove(p1.LastIndexOf('\\') + 1)}playgo-chunk.dat"))
+                using(var playgo = File.OpenRead(p2)) {
+                    playgo.Position = 0x40;
+                    playgo.Read(buff, 0, 36);
+                    PlaygoContentId = Encoding.UTF8.GetString(buff);
                 }
-            }
+            else
+                PlaygoContentId = "FileNotPresent";
 
-            jmp:
-            if (File.Exists(p2))
-            using(var playgo = File.OpenRead(p2)) {
-                playgo.Position = 0x40;
-                playgo.Read(buff, 0, 36);
-                PlaygoContentId = Encoding.UTF8.GetString(buff);
-            }
 
             return (ContentID == PlaygoContentId && PlaygoContentId == SfoContentId);
         }
@@ -1055,15 +1064,55 @@ namespace libgp4 { // ver 1.26.97
         ///////////////\\\\\\\\\\\\\\\
         //  GP4 Creation Variables  \\
         ///////////////\\\\\\\\\\\\\\\
+        /// <summary> Root Gamedata Directory To Be Parsed (Should Contain At Least An Executable And sce_sys Folder)</summary>
         private string gamedata_folder;
-        private int chunk_count, scenario_count, default_id, index = 0; //! Why am I using a global fucking index?
+
+        /// <summary> Id Of The Default Game Scenario </summary>
+        private int default_scenario_id;
+        private int chunk_count, scenario_count;
         private int[] scenario_types, scenario_chunk_range, initial_chunk_count;
-        private string app_ver, version, content_id, title_id, category;
+        private string App_Ver, Version, Content_Id, title_id, Category;
         private string[] chunk_labels, parameter_labels, scenario_labels;
+        /// <summary>  </summary>
         private readonly string[] required_sfo_variables = new string[] { "APP_VER", "CATEGORY", "CONTENT_ID", "TITLE_ID", "VERSION" };
+        
 
-        private byte[] buffer;
-
+        private static readonly string[] DEBUG_misc_sfo_variables = new string[] {
+                "APP_TYPE",
+                "APP_VER",
+                "ATTRIBUTE",
+                "ATTRIBUTE2",
+                "CATEGORY",
+                "CONTENT_ID",
+                "DEV_FLAG",
+                "DOWNLOAD_DATA_SIZE",
+                "FORMAT",
+                "PARENTAL_LEVEL",
+                "PUBTOOLINFO",
+                "PUBTOOLMINVER",
+                "PUBTOOLVER",
+                "REMOTE_PLAY_KEY_ASSIGN",
+                "SERVICE_ID_ADDCONT_ADD_1",
+                "SERVICE_ID_ADDCONT_ADD_2",
+                "SERVICE_ID_ADDCONT_ADD_3",
+                "SERVICE_ID_ADDCONT_ADD_4",
+                "SERVICE_ID_ADDCONT_ADD_5",
+                "SERVICE_ID_ADDCONT_ADD_6",
+                "SERVICE_ID_ADDCONT_ADD_7",
+                "SYSTEM_VER",
+                "TARGET_APP_VER",
+                "TITLE",
+                "TITLE_00",
+                "TITLE_03",
+                "TITLE_05",
+                "TITLE_07",
+                "TITLE_08",
+                "TITLE_17",
+                "TITLE_20",
+                "TITLE_ID",
+                "USER_DEFINED_PARAM_1",
+                "VERSION"
+        };
 
 
         #region User Functions
@@ -1079,9 +1128,9 @@ namespace libgp4 { // ver 1.26.97
 
         /// <summary> Build A Base Game .gp4 With The Current Settings, And Save It To The Specified Directory </summary>
         /// <returns> Success/Failure Status </returns>
-        public string BuildGP4(string gp4_output_directory) {
+        public string BuildAndSaveGP4(string gp4_output_directory) {
             var Result = GP4Sart(gamedata_folder, Passcode, SourcePkgPath);
-            var newGP4Path = $@"{gp4_output_directory}\{title_id}-{(category == "gd" ? "app" : "patch")}.gp4";
+            var newGP4Path = $@"{gp4_output_directory}\{title_id}-{(Category == "gd" ? "app" : "patch")}.gp4";
             gp4.Save(newGP4Path);
             WLog($".gp4 Saved In {newGP4Path}");
             return Result;
@@ -1090,7 +1139,7 @@ namespace libgp4 { // ver 1.26.97
         /// <summary> Save The .gp4 To gp4_output_directory
         ///</summary>
         public void SaveGP4(string gp4_output_directory) {
-            var newGP4Path = $@"{gp4_output_directory}\{title_id}-{(category == "gd" ? "app" : "patch")}.gp4";
+            var newGP4Path = $@"{gp4_output_directory}\{title_id}-{(Category == "gd" ? "app" : "patch")}.gp4";
             gp4.Save(newGP4Path);
             WLog($".gp4 Saved In {newGP4Path}");
         }
@@ -1099,7 +1148,7 @@ namespace libgp4 { // ver 1.26.97
         ///</summary>
         public void SaveGP4() {
             var gp4_output_directory = gamedata_folder.Remove(gamedata_folder.LastIndexOf(@"\"));
-            var newGP4Path = $@"{gp4_output_directory}\{title_id}-{(category == "gd" ? "app" : "patch")}.gp4";
+            var newGP4Path = $@"{gp4_output_directory}\{title_id}-{(Category == "gd" ? "app" : "patch")}.gp4";
             gp4.Save(newGP4Path);
             WLog($".gp4 Saved In {newGP4Path}");
         }
@@ -1146,12 +1195,12 @@ namespace libgp4 { // ver 1.26.97
 
             // Get Necessary .gp4 Variables
             ParsePlaygoChunks(gamedata_folder);
-            var ID1 = content_id;
+            var ID1 = Content_Id;
             ParseSFO(gamedata_folder);
-            if(ID1 != content_id)
-                return $"Content ID Mismatch Detected, Process Aborted\n.dat: {ID1} | .sfo: {content_id}";
+            if(ID1 != Content_Id)
+                return $"Content ID Mismatch Detected, Process Aborted\n.dat: {ID1} | .sfo: {Content_Id}";
 
-            if(category == "gp" && !File.Exists(SourcePkgPath)) {
+            if(Category == "gp" && !File.Exists(SourcePkgPath)) {
                 if(SourcePkgPath == null)
                     WLog("No Base Game Source .pkg Path Given For Patch .gp4, Using .pkg Name Default\n(.gp4 Will Expect Base Game .pkg To Be In The Same Directory As The .gp4)");
                 else
@@ -1165,7 +1214,7 @@ namespace libgp4 { // ver 1.26.97
 
 
             // Create Elements
-            CreateBaseElements(category, gp4_timestamp, content_id, Passcode, SourcePkgPath, app_ver, version, chunk_count, scenario_count);
+            CreateBaseElements(Category, gp4_timestamp, Content_Id, Passcode, SourcePkgPath, App_Ver, Version, chunk_count, scenario_count);
             CreateChunksElement(chunk_labels, chunk_count);
             CreateFilesElement(file_paths, gamedata_folder);
             CreateScenariosElement(scenario_labels);
@@ -1187,6 +1236,23 @@ namespace libgp4 { // ver 1.26.97
         /// </summary>
         private void ParsePlaygoChunks(string gamedata_folder) {
             using(var playgo_chunks_dat = File.OpenRead($@"{gamedata_folder}\sce_sys\playgo-chunk.dat")) {
+                
+                byte[] buffer;
+                
+                void ConvertbufferToStringArray(string[] StringArray) {
+                    int byteIndex = 0, index;
+                    StringBuilder Builder;
+
+                    for(index = 0; index < StringArray.Length; index++) {
+                        Builder = new StringBuilder();
+
+                        while(buffer[byteIndex] != 0)
+                            Builder.Append(Encoding.UTF8.GetString(new byte[] { buffer[byteIndex++] })); // Just Take A Byte, You Fussy Prick
+
+                        byteIndex++;
+                        StringArray[index] = Builder.ToString();
+                    }
+                }
 
                 // Read Chunk Count
                 playgo_chunks_dat.Position = 0x0A;
@@ -1203,13 +1269,13 @@ namespace libgp4 { // ver 1.26.97
 
                 // Read Default Scenario Id
                 playgo_chunks_dat.Position = 0x14;
-                default_id = (byte)playgo_chunks_dat.ReadByte();
+                default_scenario_id = (byte)playgo_chunks_dat.ReadByte();
 
                 // Read Content ID Here Instead Of The .sfo Because Meh, User Has Bigger Issues If Those Aren't the Same
                 buffer = new byte[36];
                 playgo_chunks_dat.Position = 0x40;
                 playgo_chunks_dat.Read(buffer, 0, 36);
-                content_id = Encoding.UTF8.GetString(buffer);
+                Content_Id = Encoding.UTF8.GetString(buffer);
 
                 // Read Chunk Label Start Address From Pointer
                 buffer = new byte[4];
@@ -1227,7 +1293,7 @@ namespace libgp4 { // ver 1.26.97
                 playgo_chunks_dat.Position = 0xE0;
                 playgo_chunks_dat.Read(buffer, 0, 4);
                 var scenarioPointer = BitConverter.ToInt32(buffer, 0);
-                for(index = 0; index < scenario_count; index++) {
+                for(short index = 0; index < scenario_count; index++) {
                     // Read Scenario Type
                     playgo_chunks_dat.Position = scenarioPointer;
                     scenario_types[index] = (byte)playgo_chunks_dat.ReadByte();
@@ -1268,6 +1334,7 @@ namespace libgp4 { // ver 1.26.97
             }
         }
 
+
         /// <summary> Parse param.sfo For Various Parameters <br/>
         /// parameter_labels <br/>
         /// app_ver          <br/>
@@ -1276,107 +1343,141 @@ namespace libgp4 { // ver 1.26.97
         /// title_id
         /// </summary>
         private void ParseSFO(string gamedata_folder) {
-            using(var param_sfo = File.OpenRead($@"{gamedata_folder}\sce_sys\param.sfo")) {
+            using(var sfo = File.OpenRead($@"{gamedata_folder}\sce_sys\param.sfo")) {
 
-                // Read Pointer For Array Of Parameter Names
-                buffer = new byte[4];
-                param_sfo.Position = 0x8;
-                param_sfo.Read(buffer, 0, 4);
-                var sfo_param_name_array_pointer = BitConverter.ToInt32(buffer, 0);
+                byte[] buffer;
+                int[] ParamOffsets, DataTypes, ParamLengths;
+
+
+                // Check PSF File Magic, + 4 Bytes To Skip Label Base Ptr
+                sfo.Read(buffer = new byte[12], 0, 12);
+                if(BitConverter.ToInt64(buffer, 0) != 1104986460160)
+                    throw new InvalidDataException($"File Magic For .sfo Wasn't Valid ([Expected: 00-50-53-46-01-01-00-00] != [Read: {BitConverter.ToString(buffer)}])");
+
 
                 // Read Base Pointer For .pkg Parameters
-                param_sfo.Position = 0x0C;
-                param_sfo.Read(buffer, 0, 4);
-                var sfo_parameters_pointer = BitConverter.ToInt32(buffer, 0);
+                sfo.Read(buffer = new byte[4], 0, 4);
+                var ParamVariablesPointer = BitConverter.ToInt32(buffer, 0);
 
-                // Read Parameter Name Array Length And Initialize Offset Array
-                param_sfo.Position = 0x10;
-                param_sfo.Read(buffer, 0, 4);
-                var sfo_param_name_array_length = BitConverter.ToInt32(buffer, 0);
-                int[] sfo_params_offsets = new int[sfo_param_name_array_length]; //!
+                // Read PSF Parameter Count
+                sfo.Read(buffer, 0, 4);
+                var ParameterCount = BitConverter.ToInt32(buffer, 0);
 
-                // Load Parameter Names
-                buffer = new byte[sfo_parameters_pointer - sfo_param_name_array_pointer];
-                parameter_labels = new string[sfo_param_name_array_length];
-                param_sfo.Position = sfo_param_name_array_pointer;
-                param_sfo.Read(buffer, 0, buffer.Length);
-                ConvertbufferToStringArray(parameter_labels);
 
-                // Load Parameter Offsets
-                param_sfo.Position = 0x20;
-                buffer = new byte[4];
-                for(index = 0; index < sfo_param_name_array_length; param_sfo.Position += (0x10 - buffer.Length)) {
-                    param_sfo.Read(buffer, 0, 4);
-                    sfo_params_offsets[index] = sfo_parameters_pointer + BitConverter.ToInt32(buffer, 0);
-                    index++;
+                // Initialize Arrays
+                var SfoParams      = new object [ParameterCount];
+                var SfoParamLabels = new string [ParameterCount];
+                DataTypes          = new int    [ParameterCount];
+                ParamLengths       = new int    [ParameterCount];
+                ParamOffsets       = new int    [ParameterCount];
+
+
+                // Load Related Data For Each Parameter
+                for(int i = 0; i < ParameterCount; i++) {
+
+                    sfo.Position += 3; // Skip Label Offset
+
+                    // Read And Check Data Type (4 = Int32, 2 = UTf8, 0 = Rsv4 )
+                    if((DataTypes[i] = sfo.ReadByte()) == 2 || DataTypes[i] == 4) {
+                        sfo.Read(buffer, 0, 4);
+                        ParamLengths[i] = BitConverter.ToInt32(buffer, 0);
+
+                        sfo.Read(buffer, 0, 4);
+                        ParamOffsets[i] = BitConverter.ToInt32(buffer, 0);
+                    }
+
+                    sfo.Position += 4; // Skip Param Offset
+                }
+
+                // Load Parameter Labels
+                for(int index = 0, @byte; index < ParameterCount; index++) {
+                    var ByteList = new List<byte>();
+
+                    // Read To End Of Label
+                    for(; (@byte = sfo.ReadByte()) != 0; ByteList.Add((byte)@byte)) ;
+
+                    SfoParamLabels[index] = Encoding.UTF8.GetString(ByteList.ToArray());
                 }
 
 
-                // Load The Rest Of The Required .pkg Variables From param.sfo
-                for(index = 0; index < sfo_param_name_array_length; index++)
-                    if(required_sfo_variables.Contains(parameter_labels[index])) { // Ignore Variables Not Needed For .gp4 Project Creation
+                for(int i = 0; i < ParameterCount; ParamVariablesPointer += ParamOffsets[i++]) {
+                    sfo.Position = ParamVariablesPointer;
 
-                        param_sfo.Position = sfo_params_offsets[index];
-                        buffer = new byte[4]; //! Why Is This Here?
+                    sfo.Read(buffer = new byte[ParamLengths[i]], 0, ParamLengths[i]);
 
-                        switch(parameter_labels[index]) { // I'm Too Tired to think of a more elegant solution right now. If it works, it works
+                    Debug.WriteLine($"\nLabel: {SfoParamLabels[i]}");
 
-                            case "APP_VER":
-                                buffer = new byte[5];
-                                param_sfo.Read(buffer, 0, 5);
-                                app_ver = Encoding.UTF8.GetString(buffer);
-                                break;
-                            case "CATEGORY": // gd / gp
-                                param_sfo.Read(buffer, 0, 2);
-                                category = Encoding.UTF8.GetString(buffer, 0, 2);
-                                break;
-                            case "CONTENT_ID":
-                                buffer = new byte[36];
-                                param_sfo.Read(buffer, 0, 36);
-                                content_id = Encoding.UTF8.GetString(buffer);
-                                break;
-                            case "TITLE_ID":
-                                buffer = new byte[9];
-                                param_sfo.Read(buffer, 0, 9);
-                                title_id = Encoding.UTF8.GetString(buffer);
-                                break;
-                            case "VERSION": // Remaster
-                                buffer = new byte[5];
-                                param_sfo.Read(buffer, 0, 5);
-                                version = Encoding.UTF8.GetString(buffer);
-                                break;
-                        }
+
+                    // String
+                    if(DataTypes[i] == 2) {
+                        if(ParamLengths[i] > 1 && buffer[ParamLengths[i] - 1] == 0)
+                            SfoParams[i] = Encoding.UTF8.GetString(buffer, 0, buffer.Length - 1);
+                        else
+                            SfoParams[i] = Encoding.UTF8.GetString(buffer);
+
+
+                        if(((string)SfoParams[i])[0] == 0)
+                            SfoParams[i] = "Empty String";
+
+                        Debug.WriteLine($"Param: {SfoParams[i]}");
                     }
+
+                    // Int32
+                    else if(DataTypes[i] == 4) {
+                        SfoParams[i] = BitConverter.ToInt32(buffer, 0);
+                        Debug.WriteLine($"Param: {SfoParams[i]}");
+                    }
+                }
+
+                foreach(string param in SfoParams)
+                    switch(param) {
+                        case "APP_TYPE":
+                            break;
+                        case "APP_VER":
+                            App_Ver = param;
+                            break;
+                        case "CATEGORY":
+                            Category = param;
+                            break;
+                        case "CONTENT_ID":
+                            Content_Id = param;
+                            break;
+                        case "VERSION":
+                            Version = param;
+                            break;
+                        case "FORMAT":
+                        case "PARENTAL_LEVEL":
+                        case "PUBTOOLINFO":
+                        case "PUBTOOLMINVER":
+                        case "PUBTOOLVER":
+                        case "SYSTEM_VER":
+                        case "TARGET_APP_VER":
+                        case "TITLE":
+                        case "TITLE_00":
+                        case "TITLE_ID":
+                        case "USER_DEFINED_PARAM_1":
+                            break;
+                    }
+
+
+#if DEBUG
+                foreach(var f in DEBUG_misc_sfo_variables) {
+                    continue;
+                    Debug.WriteLine($"case \"{f}\":\n    break;");
+                }
+#endif
             }
         }
 
 
-        /// <summary> Parses A Byte Array And Converts Data To A String Array, With Strings Seperated By Null Bytes
-        ///</summary>
-        /// <param name="StringArray"> The Initialized Array To Write To</param>
-        private void ConvertbufferToStringArray(string[] StringArray) {
-            int byteIndex = 0;
-            StringBuilder Builder;
-
-            for(index = 0; index < StringArray.Length; index++) {
-                Builder = new StringBuilder();
-
-                while(buffer[byteIndex] != 0)
-                    Builder.Append(Encoding.UTF8.GetString(new byte[] { buffer[byteIndex++] })); // Just Take A Byte, You Fussy Prick
-
-                byteIndex++;
-                StringArray[index] = Builder.ToString();
-            }
-        }
 
         /// <summary> Returns A String Array Containing The Paths For Every File In The Selected Gamedata Folder
         ///</summary>
         private string[] GetProjectFilePaths(string gamedata_folder) {
-            DirectoryInfo directoryInfo = new DirectoryInfo(gamedata_folder);
-            FileInfo[] file_info = directoryInfo.GetFiles(".", SearchOption.AllDirectories);
+            var file_info = new DirectoryInfo(gamedata_folder).GetFiles(".", SearchOption.AllDirectories);
 
-            string[] file_paths = new string[file_info.Length];
-            for(index = 0; index < file_info.Length; index++)
+            var file_paths = new string[file_info.Length];
+            for(var index = 0; index < file_info.Length; index++)
                 file_paths[index] = file_info[index].FullName;
 
             return file_paths;
@@ -1390,7 +1491,7 @@ namespace libgp4 { // ver 1.26.97
             if(filepath.Contains('.'))
                 filename = filepath.Remove(filepath.LastIndexOf(".")).Substring(filepath.LastIndexOf('\\') + 1); // Tf Am I Doing Here?
 
-            string[] blacklist = new string[] {
+            string[] file_blacklist = new string[] {
                   // Drunk Canadian Guy
                     "right.sprx",
                     $"{(IgnoreKeystone ? @"sce_sys\keystone" : "@@")}",
@@ -1420,7 +1521,7 @@ namespace libgp4 { // ver 1.26.97
                     @"sce_sys\app\playgo-manifest.xml"
             };
 
-            foreach(var blacklisted_file_or_folder in blacklist)
+            foreach(var blacklisted_file_or_folder in file_blacklist)
                 if(filepath.Contains(blacklisted_file_or_folder)) {
 #if DEBUG
                     WLog($"Ignoring: {filepath}");
