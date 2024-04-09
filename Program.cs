@@ -12,7 +12,7 @@ using System.Collections.Generic;
 
 /// <summary> A Small Library For Building .gp4 Files Used In The PS4 .pkg Creation Process, And Reading Info From Already Created Ones
 ///</summary>
-namespace libgp4 { // ver 1.26.97
+namespace libgp4 { // ver 1.26.100
 
 
     ///////////\\\\\\\\\\\\
@@ -1483,8 +1483,10 @@ namespace libgp4 { // ver 1.26.97
             return file_paths;
         }
 
-        /// <summary> Check A Blacklist And User Blacklist And Exclude Any Files Who's Paths Contain A Blacklisted String
-        ///</summary>
+        /// <summary>
+        /// Check Whether The filepath Containts A Blacklisted String.<br/>
+        /// Checks Both A Default String[] Of Blacklisted Files, As Well As Any User Blacklisted Files/Folders.
+        /// </summary>
         /// <returns> True If The File in filepath Shouldn't Be Included In The .gp4 </returns>
         private bool FileShouldBeExcluded(string filepath) {
             string filename = string.Empty;
@@ -1541,6 +1543,11 @@ namespace libgp4 { // ver 1.26.97
             return false;
         }
 
+        /// <summary>
+        /// Check Whether Or Not The File At filepath Should Have Pfs Compression Enabled.<br/>
+        /// This Is Almost Certainly Incomplete. Need More Brain Juice.
+        /// </summary>
+        /// <returns> True If Pfs Compression Should Be Enabled. </returns>
         private bool SkipCompression(string filepath) {
             string[] Blacklist = new string[] {
                 "sce_sys",
@@ -1558,6 +1565,12 @@ namespace libgp4 { // ver 1.26.97
             return false;
         }
 
+
+        /// <summary>
+        /// Check Whether Or Not The File At filepath Should Have The "chunks" Attribute.<br/>
+        /// [This Is Almost Certainly Incomplete. Need More Brain Juice.]
+        /// </summary>
+        /// <returns> True If The Chunk Attribute Should Be Skipped. </returns>
         private bool SkipChunkAttribute(string filepath) {
             string[] Blacklist = new string[] {
                 "sce_sys",
