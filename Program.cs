@@ -1042,9 +1042,10 @@ namespace libgp4 { // ver 1.26.100
 
         /// <summary>
         /// Initialize A New Instance Of The GP4Creator Class.<br/>
-        /// 
+        /// Parses The param.sfo &amp; playgo-chunks.dat As Well As The Project Files/Folders Without Building The .gp4.
         /// </summary>
-        /// <param name="GamedataFolder"> The Folder Containing The Game's Executable And Game/System Data </param>
+        /// 
+        /// <param name="GamedataFolder"> The Folder Containing The Gamedata To Create A .gp4 Project File For. </param>
         public GP4Creator(string GamedataFolder) {
             gamedata_folder = GamedataFolder;
             Passcode = "00000000000000000000000000000000";
@@ -1056,18 +1057,23 @@ namespace libgp4 { // ver 1.26.100
             file_paths = GetProjectFilePaths(gamedata_folder);
         }
 
-        /// <summary> Initialize Class For Creating new .gp4 Files From Raw PS4 Gamedata </summary>
-        /// <param name="GamedataFolder"> The Folder Containing The Game's Executable And Game/System Data </param>
-        /// <param name="OutputDirectory"> Folder In Which To Place The Newly Build .gp4 Project File </param>
+        /// <summary>
+        /// Initialize A New Instance Of The GP4Creator Class.<br/>
+        /// Parses The param.sfo &amp; playgo-chunks.dat As Well As The Project Files/Folders, Then Creats A New .gp4 At The Specified Path.
+        /// </summary>
+        /// 
+        /// <param name="GamedataFolder"> The Folder Containing The Gamedata To Create A .gp4 Project File For. </param>
+        /// <param name="OutputDirectory"> Folder In Which To Place The Newly Build .gp4 Project File. </param>
         public GP4Creator(string GamedataFolder, string OutputDirectory) {
-            this.gamedata_folder = GamedataFolder;
+            gamedata_folder = GamedataFolder;
             Passcode = "00000000000000000000000000000000";
 
             gp4_declaration = (gp4 = new XmlDocument()).CreateXmlDeclaration("1.1", "utf-8", "yes");
 
             // Get Necessary .gp4 Variables
             ParsePSFAndPlaygoData(gamedata_folder);
-
+            file_paths = GetProjectFilePaths(gamedata_folder);
+            
             BuildGP4(OutputDirectory);
         }
 
@@ -1220,13 +1226,17 @@ namespace libgp4 { // ver 1.26.100
         /////////////////\\\\\\\\\\\\\\\\\
         #region User Functions
 
-        /// <summary> ! </summary>
+        /// <summary> Build A New .gp4 Project File With The Current Options/Settings, And Save It In The Specified OutputDirectory </summary>
         /// <param name="OutputDirectory"> Folder In Which To Place The Newly Build .gp4 Project File </param>
-        /// <returns> | </returns>
-        public string BuildGP4(string OutputDirectory) {
+        /// <returns>  </returns>
+        public void BuildGP4(string OutputDirectory) {
+            
+            string GP4OutputPath;
 
-            if(!Directory.Exists(gamedata_folder))
-                return $"Could Not Find The Game Data Directory \"{gamedata_folder}\"";
+            if(!Directory.Exists(gamedata_folder)) {
+                DLog($"Could Not Find The Game Data Directory \"{gamedata_folder}\"");
+                return;
+            }
 
 
             // Timestamp For GP4, Same Format Sony Used Though Sony's Technically Only Tracks The Date,
@@ -1240,8 +1250,10 @@ namespace libgp4 { // ver 1.26.100
             WLog($"Starting .gp4 Creation. \nPasscode: {Passcode}\nSource .pkg Path: {SourcePkgPath}");
 
 
-            if(playgo_content_id != content_Id)
-                return $"Content ID Mismatch Detected, Process Aborted\n.dat: {playgo_content_id} | .sfo: {content_Id}";
+            if(playgo_content_id != content_Id) {
+                DLog($"Content ID Mismatch Detected, Process Aborted\n.dat: {playgo_content_id} | .sfo: {content_Id}");
+                return;
+            }
 
 
             // Catch Conflicting Project Type Information
@@ -1261,11 +1273,12 @@ namespace libgp4 { // ver 1.26.100
             CreateRootDirectoryElement(gamedata_folder);
 
 
-            var newGP4Path = $@"{OutputDirectory}\{title_id}-{((category == "gd")? "app" : "patch")}.gp4";
-            gp4.Save(newGP4Path);
-            WLog($".gp4 Saved In {newGP4Path}");
+            
+            gp4.Save(GP4OutputPath = $@"{OutputDirectory}\{title_id}-{((category == "gd") ? "app" : "patch")}.gp4");
 
-            return $"GP4 Creation Successful, Time Taken: {WriteElementsToGP4(internal_gp4_timestamp).Subtract(internal_gp4_timestamp)}".TrimEnd('0');
+            WLog($".gp4 Saved In {GP4OutputPath}");
+
+            DLog($"GP4 Creation Successful, Time Taken: {WriteElementsToGP4(internal_gp4_timestamp).Subtract(internal_gp4_timestamp)}".TrimEnd('0'));
         }
 
         #endregion
