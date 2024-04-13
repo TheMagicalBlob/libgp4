@@ -5,12 +5,13 @@ using System.Xml;
 
 namespace libgp4 {
     public partial class GP4Creator {
+    #pragma warning disable CS1587
 
         // GP4 Element Variables
         private readonly XmlDocument gp4;
         private readonly XmlDeclaration gp4_declaration;
 
-        /// <summary> XML Elements Required For Valid .gp4 Project Creation </summary>
+        /// <summary> XML Element Required For Valid .gp4 Project Creation </summary>
         private static XmlElement
             file,
             psproject,
@@ -34,6 +35,7 @@ namespace libgp4 {
         /////////////////////\\\\\\\\\\\\\\\\\\\
         ///--     GP4 ELEMENT CREATION     --\\\
         /////////////////////\\\\\\\\\\\\\\\\\\\
+        #region GP4 ELEMENT CREATION
 
         /// <summary>
         ///   Create Base .gp4 Elements (Up To Chunk/Scenario Data)
@@ -46,7 +48,7 @@ namespace libgp4 {
             volume = gp4.CreateElement("volume");
 
             volume_type = gp4.CreateElement("volume_type");
-            volume_type.InnerText = $"pkg_{(category == "gd" ? "ps4_app" : "ps4_patch")}";
+            volume_type.InnerText = $"pkg_{((category == "gd")? "ps4_app" : "ps4_patch")}";
 
             volume_id = gp4.CreateElement("volume_id");
             volume_id.InnerText = "PS4VOLUME";
@@ -57,11 +59,11 @@ namespace libgp4 {
             package = gp4.CreateElement("package");
             package.SetAttribute("content_id", content_id);
             package.SetAttribute("passcode", passcode);
-            package.SetAttribute("storage_type", (category == "gp" ? "digital25" : "digital50"));
+            package.SetAttribute("storage_type", ((category == "gp")? "digital25" : "digital50"));
             package.SetAttribute("app_type", "full");
 
             if(category == "gp")
-                package.SetAttribute("app_path", $"{(pkg_source == "" ? $"{content_id}-A0100-V{version.Replace(".", "")}.pkg" : pkg_source)}");
+                package.SetAttribute("app_path", $"{((pkg_source == "")? $"{content_id}-A{app_ver.Replace(".", "")}-V{version.Replace(".", "")}.pkg" : pkg_source)}");
 
             chunk_info = gp4.CreateElement("chunk_info");
             chunk_info.SetAttribute("chunk_count", $"{chunk_count}");
@@ -75,15 +77,20 @@ namespace libgp4 {
         private void CreateFilesElement(string[] file_paths, string gamedata_folder) {
             files = gp4.CreateElement("files");
 
-            for(var index = 0; index < file_paths.Length; index++)
-            if(!FileShouldBeExcluded(file_paths[index])) {
+            for(var index = 0; index < file_paths.Length; index++) {
+                if(FileShouldBeExcluded(file_paths[index]))
+                    continue;
+
                 file = gp4.CreateElement("file");
                 file.SetAttribute("targ_path", (file_paths[index].Replace(gamedata_folder + "\\", string.Empty)).Replace('\\', '/'));
                 file.SetAttribute("orig_path", file_paths[index]);
+
                 if(!SkipCompression(file_paths[index]))
                     file.SetAttribute("pfs_compression", "enable");
+                
                 if(!SkipChunkAttribute(file_paths[index]) && chunk_count - 1 != 0)
                     file.SetAttribute("chunks", $"0-{chunk_count - 1}");
+                
                 files.AppendChild(file);
             }
         }
@@ -186,5 +193,7 @@ namespace libgp4 {
 
             return NewTime;
         }
+
+        #endregion
     }
 }
