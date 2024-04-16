@@ -1044,6 +1044,16 @@ namespace libgp4 { // ver 1.26.100
         /// Initialize A New Instance Of The GP4Creator Class.<br/>
         /// Parses The param.sfo &amp; playgo-chunks.dat As Well As The Project Files/Folders Without Building The .gp4.
         /// </summary>
+        public GP4Creator() {
+            Passcode = "00000000000000000000000000000000";
+            gp4_declaration = (gp4 = new XmlDocument()).CreateXmlDeclaration("1.1", "utf-8", "yes");
+        }
+
+
+        /// <summary>
+        /// Initialize A New Instance Of The GP4Creator Class.<br/>
+        /// Parses The param.sfo &amp; playgo-chunks.dat As Well As The Project Files/Folders Without Building The .gp4.
+        /// </summary>
         /// 
         /// <param name="GamedataFolder"> The Folder Containing The Gamedata To Create A .gp4 Project File For. </param>
         public GP4Creator(string GamedataFolder) {
@@ -1052,9 +1062,8 @@ namespace libgp4 { // ver 1.26.100
 
             gp4_declaration = (gp4 = new XmlDocument()).CreateXmlDeclaration("1.1", "utf-8", "yes");
 
-            // Get Necessary .gp4 Variables
-            ParsePSFAndPlaygoData(gamedata_folder);
-            file_paths = GetProjectFilePaths(gamedata_folder);
+            // Get Necessary Project Data For .gp4 Creation
+            ParseProjectFiles(GamedataFolder);
         }
 
         /// <summary>
@@ -1070,19 +1079,53 @@ namespace libgp4 { // ver 1.26.100
 
             gp4_declaration = (gp4 = new XmlDocument()).CreateXmlDeclaration("1.1", "utf-8", "yes");
 
-            // Get Necessary .gp4 Variables
-            ParsePSFAndPlaygoData(gamedata_folder);
-            file_paths = GetProjectFilePaths(gamedata_folder);
-            
-            BuildGP4(OutputDirectory);
+            // Get Necessary Project Data For .gp4 Creation 
+            ParseProjectFiles(GamedataFolder);
+
+            // Build .gp4 Xml Structure And Save The Finished Project File At The Given OutputDirectory
+            CreateGP4(OutputDirectory);
         }
 
 
 
-        ////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\
-        ///--     Internal Variables / Methods     --\\\
-        ////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\
-        #region Internal Variables / Methods
+        ////////////////////////\\\\\\\\\\\\\\\\\\\\\\\
+        //--     User Options For GP4 Creation     --\\
+        ////////////////////////\\\\\\\\\\\\\\\\\\\\\\\
+        #region User Options For GP4 Creation
+
+        /// <summary>
+        /// Exclude Keystone From .gp4<br/>
+        /// (False By Default)
+        /// </summary>
+        public bool Keystone;
+
+        /// <summary> Limit GP4 Log Verbosity </summary>
+        //public bool VerboseLogging;
+        
+        /// <summary>  The 32-bit Key Used To Encrypt The .pkg, Needed To Extract With PC Tools<br/>
+        /// (No Effect On Dumping, You Can Leave This Alone)
+        /// </summary>
+        public string Passcode;
+
+        /// <summary>
+        /// Necessary Variable For The Creation Of Patch A .pkg.<br/><br/>
+        /// Path Of The Base Game Pkg You're Going To Install The Created Patch Package To. (Patch Packages Must Be Married To Their Intended Base)
+        /// </summary>
+        public string BaseGamePackage;
+
+        /// <summary> An Array Containing The Names Of Any Files Or Folders That Are To Be Excluded From The .gp4 Project. </summary>
+        public string[] FileBlackList;
+
+        ///! <summary> Optional Method To Use For Logging. </summary>
+        public Action<object> LogOutput;
+        #endregion
+
+
+
+        //////////////////////\\\\\\\\\\\\\\\\\\\\\
+        ///--     GP4 Attributes / Values     --\\\
+        //////////////////////\\\\\\\\\\\\\\\\\\\\\
+        #region GP4 Attributes / Values
 
         private static readonly string assertion_message = $"An Error Occured When Reading Attribute From The Following Node: $|$\nMessage: %|%";
 
@@ -1126,48 +1169,6 @@ namespace libgp4 { // ver 1.26.100
         /// </summary>
         private string[] file_paths;
 
-        #endregion
-
-
-        ////////////////////////\\\\\\\\\\\\\\\\\\\\\\\
-        //--     User Options For GP4 Creation     --\\
-        ////////////////////////\\\\\\\\\\\\\\\\\\\\\\\
-        #region User Options For GP4 Creation
-
-        /// <summary>
-        /// Exclude Keystone From .gp4<br/>
-        /// (False By Default)
-        /// </summary>
-        public bool IgnoreKeystone;
-
-        /// <summary> Limit GP4 Log Verbosity </summary>
-        public bool VerboseLogging;
-        
-        /// <summary> An Array Of Strings With Witch To Exclude Files From The .gp4 </summary>
-        public string[] UserBlacklist;
-        
-        /// <summary>  The 32-bit Key Used To Encrypt The .pkg, Needed To Extract With PC Tools<br/>
-        /// (No Effect On Dumping, You Can Leave This Alone)
-        /// </summary>
-        public string Passcode;
-
-        /// <summary>
-        /// Necessary Variable For The Creation Of Patch A .pkg.<br/><br/>
-        /// Path Of The Base Game Pkg You're Going To Install The Created Patch Package To. (Patch Packages Must Be Married To Their Intended Base)
-        /// </summary>
-        public string SourcePkgPath;
-        
-        ///! <summary> Optional Method To Use For Logging. </summary>
-        public Action<object> LogOutput;
-
-        #endregion
-
-
-        //////////////////////\\\\\\\\\\\\\\\\\\\\\
-        ///--     GP4 Attributes / Values     --\\\
-        //////////////////////\\\\\\\\\\\\\\\\\\\\\
-        #region GP4 Attributes / Values
-
         /// <summary> Root Gamedata Directory To Be Parsed (Should Contain At Least An Executable And sce_sys Folder)</summary>
         private string gamedata_folder;
 
@@ -1177,7 +1178,7 @@ namespace libgp4 { // ver 1.26.100
         private int chunk_count, scenario_count;
         private int[] scenario_types, scenario_chunk_range, initial_chunk_count;
         private string app_ver, version, playgo_content_id, content_Id, title_id, category;
-        private string[] chunk_labels, parameter_labels, scenario_labels;
+        private string[] chunk_labels, scenario_labels;
 
         private readonly string[] required_sfo_variables = new string[] { "APP_VER", "CATEGORY", "CONTENT_ID", "TITLE_ID", "VERSION" };
         
@@ -1226,135 +1227,18 @@ namespace libgp4 { // ver 1.26.100
         /////////////////\\\\\\\\\\\\\\\\\
         #region User Functions
 
-        /// <summary> Build A New .gp4 Project File With The Current Options/Settings, And Save It In The Specified OutputDirectory </summary>
-        /// <param name="OutputDirectory"> Folder In Which To Place The Newly Build .gp4 Project File </param>
-        /// <returns>  </returns>
-        public void BuildGP4(string OutputDirectory) {
-            
-            string GP4OutputPath;
 
-            if(!Directory.Exists(gamedata_folder)) {
-                DLog($"Could Not Find The Game Data Directory \"{gamedata_folder}\"");
-                return;
-            }
+        public void CreateNewGP4(string GamedataFolder) {
 
-
-            // Timestamp For GP4, Same Format Sony Used Though Sony's Technically Only Tracks The Date,
-            // With The Time Left As 00:00, But Imma Just Add The Time. It Doesn't Break Anything).
-            var gp4_timestamp = $"{DateTime.Now.GetDateTimeFormats()[78]}";
-
-            // Alternate One To Accurately Track .gp4 Build Times
-            var internal_gp4_timestamp = new TimeSpan(DateTime.Now.Day, DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second, DateTime.Now.Millisecond);
-
-
-            WLog($"Starting .gp4 Creation. \nPasscode: {Passcode}\nSource .pkg Path: {SourcePkgPath}");
-
-
-            if(playgo_content_id != content_Id) {
-                DLog($"Content ID Mismatch Detected, Process Aborted\n.dat: {playgo_content_id} | .sfo: {content_Id}");
-                return;
-            }
-
-
-            // Catch Conflicting Project Type Information
-            if(category == "gp" && !File.Exists(SourcePkgPath)) {
-                if(SourcePkgPath == null)
-                    WLog("No Base Game Source .pkg Path Given For Patch .gp4, Using .pkg Name Default\n(.gp4 Will Expect Base Game .pkg To Be In The Same Directory As The .gp4)");
-                else
-                    WLog("Invalid Source .pkg Path Given, File Does Not Exist, Make Sure This Is Fixed Before .pkg Creation");
-            }
-
-
-            // Create Elements
-            CreateBaseElements(category, gp4_timestamp, content_Id, Passcode, SourcePkgPath, app_ver, version, chunk_count, scenario_count);
-            CreateChunksElement(chunk_labels, chunk_count);
-            CreateFilesElement(file_paths, gamedata_folder);
-            CreateScenariosElement(scenario_labels);
-            CreateRootDirectoryElement(gamedata_folder);
-
-
-            
-            gp4.Save(GP4OutputPath = $@"{OutputDirectory}\{title_id}-{((category == "gd") ? "app" : "patch")}.gp4");
-
-            WLog($".gp4 Saved In {GP4OutputPath}");
-
-            DLog($"GP4 Creation Successful, Time Taken: {WriteElementsToGP4(internal_gp4_timestamp).Subtract(internal_gp4_timestamp)}".TrimEnd('0'));
         }
 
-        #endregion
-
-
-        //////////////////////\\\\\\\\\\\\\\\\\\\\\
-        ///--     User Functions (Static)     --\\\
-        //////////////////////\\\\\\\\\\\\\\\\\\\\\
-        #region User Functions (Static)
-
-
-        /// <summary> Build A Base Game .gp4 With The Default Passcode, And Save It To The Specified Directory </summary>
-        /// 
-        /// <param name="GamedataFolder"></param>
-        /// <param name="Gp4OutputDirectory"></param>
-        /// <param name="FileOrFolderBlacklist"></param>
-        /// <param name="SourcePkgPath"></param>
-        /// 
-        /// <returns> True If Nothing Went Wrong </returns>
-        public static bool BuildAndSaveGP4(string GamedataFolder, string Gp4OutputDirectory, string SourcePkgPath, string[] FileOrFolderBlacklist) {
-            
-            /*
-            var Result = GP4Sart(GamedataFolder, "00000000000000000000000000000000", SourcePkgPath);
-
-            var newGP4Path = $@"{gp4_output_directory}\{title_id}-{(category == "gd" ? "app" : "patch")}.gp4";
-            gp4.Save(newGP4Path);
-            WLog($".gp4 Saved In {newGP4Path}");
-            */
-
-            return true;
-        }
-        #endregion
-
-
-
-
-        ///////////////////////\\\\\\\\\\\\\\\\\\\\\\\
-        ///--     Main Application Functions     --\\\
-        ///////////////////////\\\\\\\\\\\\\\\\\\\\\\\
-        #region Main Application Functions
-
-        /// <summary> Output Log Messages To A Specified RichTextBox Control, And/Or To The Console If Applicable </summary>
-        private void WLog(object o) {
-            string s = o as string;
-
-            Console.WriteLine(s);
-
-            LogOutput(s);
-        }
-
-        /// <summary> Console Logging Method. </summary>
-        private static void DLog(object o) {
-
-            if(enable_output_channel[0])
-                try { Debug.WriteLine("#libgp4.dll: " + o); }
-                catch(Exception) { enable_output_channel[0] = false; }
-
-            if(!Console.IsOutputRedirected && enable_output_channel[1]) // Avoid Duplicate Writes
-                try { Console.WriteLine("#libgp4.dll: " + o); }
-                catch(Exception) { enable_output_channel[1] = false; }
-        }
-
-        /// <summary> Error Logging Method. </summary>
-        private static void ELog(string NodeName, string Error) {
-            var Message = (assertion_message.Replace("$|$", NodeName)).Replace("%|%", Error);
-
-            try { Debug.WriteLine("libgp4.dll: " + Message); }
-            catch(Exception) { enable_output_channel[0] = false; }
-
-            if(!Console.IsOutputRedirected) // Avoid Duplicate Writes
-                try { Console.WriteLine("libgp4.dll: " + Message); }
-                catch(Exception) { enable_output_channel[1] = false; }
-        }
-
-        /// <summary> Parse playgo-chunk.dat And Param.sfo To Get Most Variables <br/><br/>
-        /// playgo-chunks.dat:   <br/>
+        /// <summary>
+        /// Parse Param.sfo &amp; playgo-chunks.dat And Load Required Variables,<br/>
+        /// As Well As Save The Paths Of The Project Files &amp; Subdirectories In The Given Project Folder. <br/><br/>
+        /// Sets The Following Values:
+        /// <br/><br/>
+        /// =============        <br/>
+        /// <para>playgo-chunks.dat:</para>
         /// chunk_count          <br/>
         /// chunk_labels         <br/>
         /// scenario_count       <br/>
@@ -1363,20 +1247,25 @@ namespace libgp4 { // ver 1.26.100
         /// initial_chunk_count  <br/>
         /// scenario_chunk_range <br/>
         /// default_id           <br/>
-        /// content_id
+        /// content_id      <br/><br/>
         /// 
-        /// param.sfo:           <br/>
-        /// parameter_labels <br/>
-        /// app_ver          <br/>
-        /// version          <br/>
-        /// category         <br/>
-        /// title_id
+        /// =============        <br/>
+        /// <para>param.sfo:   </para>
+        /// parameter_labels     <br/>
+        /// app_ver              <br/>
+        /// version              <br/>
+        /// category             <br/>
+        /// title_id             <br/>
+        /// content_id (Read Again For Error Checking)<br/><br/>
+        /// =============        <br/>
         /// </summary>
-        private void ParsePSFAndPlaygoData(string gamedata_folder) {
-            using(var playgo = File.OpenRead($@"{gamedata_folder}\sce_sys\playgo-chunk.dat")) {
-                
+        private void ParseProjectFiles(string GamedataFolder) {
+
+            // Parse playgo-chunks.dat For Various Scenario/Chunk Related Parameters, As Well As The Content Id To Check Against The .sfo
+            using(var playgo = File.OpenRead($@"{GamedataFolder}\sce_sys\playgo-chunk.dat")) {
+
                 byte[] buffer;
-                
+
                 void ConvertbufferToStringArray(string[] StringArray) {
                     int byteIndex = 0, index;
                     StringBuilder Builder;
@@ -1400,16 +1289,16 @@ namespace libgp4 { // ver 1.26.100
                 // Read Scenario Count
                 playgo.Position = 0x0E;
                 scenario_count       = (byte)playgo.ReadByte();
-                scenario_types       = new int   [scenario_count];
+                scenario_types       = new int[scenario_count];
                 scenario_labels      = new string[scenario_count];
-                initial_chunk_count  = new int   [scenario_count];
-                scenario_chunk_range = new int   [scenario_count];
+                initial_chunk_count  = new int[scenario_count];
+                scenario_chunk_range = new int[scenario_count];
 
                 // Read Default Scenario Id
                 playgo.Position = 0x14;
                 default_scenario_id = (byte)playgo.ReadByte();
 
-                // Read Content ID Here Instead Of The .sfo Because Meh, User Has Bigger Issues If Those Aren't the Same
+                // Read Content ID
                 buffer = new byte[36];
                 playgo.Position = 0x40;
                 playgo.Read(buffer, 0, 36);
@@ -1431,7 +1320,8 @@ namespace libgp4 { // ver 1.26.100
                 playgo.Position = 0xE0;
                 playgo.Read(buffer, 0, 4);
                 var scenarioPointer = BitConverter.ToInt32(buffer, 0);
-                for(short index = 0; index < scenario_count; index++) {
+                for(short index = 0; index < scenario_count; index++, scenarioPointer += 0x20) {
+
                     // Read Scenario Type
                     playgo.Position = scenarioPointer;
                     scenario_types[index] = (byte)playgo.ReadByte();
@@ -1440,9 +1330,9 @@ namespace libgp4 { // ver 1.26.100
                     playgo.Position = (scenarioPointer + 0x14);
                     playgo.Read(buffer, 2, 2);
                     initial_chunk_count[index] = BitConverter.ToInt16(buffer, 2);
+
                     playgo.Read(buffer, 2, 2);
                     scenario_chunk_range[index] = BitConverter.ToInt16(buffer, 2);
-                    scenarioPointer += 0x20;
                 }
 
                 // Load Scenario Label Array Byte Length
@@ -1472,7 +1362,8 @@ namespace libgp4 { // ver 1.26.100
             }
 
 
-            using(var sfo = File.OpenRead($@"{gamedata_folder}\sce_sys\param.sfo")) {
+            // Parse The Application's param.sfo For The Remaining Required Parameters
+            using(var sfo = File.OpenRead($@"{GamedataFolder}\sce_sys\param.sfo")) {
 
                 byte[] buffer;
                 int[] ParamOffsets, DataTypes, ParamLengths;
@@ -1574,35 +1465,186 @@ namespace libgp4 { // ver 1.26.100
                         case "VERSION":
                             version = param;
                             break;
-                        case "FORMAT":
-                        case "PARENTAL_LEVEL":
-                        case "PUBTOOLINFO":
-                        case "PUBTOOLMINVER":
-                        case "PUBTOOLVER":
-                        case "SYSTEM_VER":
-                        case "TARGET_APP_VER":
-                        case "TITLE":
-                        case "TITLE_00":
-                        case "TITLE_ID":
-                        case "USER_DEFINED_PARAM_1":
-                            break;
+
+                            /* Might Do Something WIth These Later
+                            case "FORMAT":
+                            case "PARENTAL_LEVEL":
+                            case "PUBTOOLINFO":
+                            case "PUBTOOLMINVER":
+                            case "PUBTOOLVER":
+                            case "SYSTEM_VER":
+                            case "TARGET_APP_VER":
+                            case "TITLE":
+                            case "TITLE_00":
+                            case "TITLE_ID":
+                                break;
+                            */
                     }
             }
-        }
 
 
+            // Get Project Files And Subfolders
+            var file_info = new DirectoryInfo(GamedataFolder).GetFiles(".", SearchOption.AllDirectories);
+            file_paths = new string[file_info.Length];
 
-        /// <summary> Returns A String Array Containing The Paths For Every File In The Selected Gamedata Folder
-        ///</summary>
-        private string[] GetProjectFilePaths(string gamedata_folder) {
-            var file_info = new DirectoryInfo(gamedata_folder).GetFiles(".", SearchOption.AllDirectories);
-
-            var file_paths = new string[file_info.Length];
             for(var index = 0; index < file_info.Length; index++)
-                file_paths[index] = file_info[index].FullName;
-
-            return file_paths;
+                Debug.WriteLine("!>>-" + (file_paths[index] = file_info[index].FullName));
         }
+
+
+
+        /// <summary> Build A New .gp4 Project File For The Provided Gamedata With The Current Options/Settings, And Save It In The Specified OutputDirectory.
+        ///</summary>
+        /// 
+        /// <param name="OutputDirectory"> Folder In Which To Place The Newly Build .gp4 Project File. </param>
+        /// <param name="ErrorChecking"> Set Whether Or Not To Abort The Creation Process If An Error Is Found That Would Cause .pkg Creation To Fail, Or Simply Log It To The Standard Console Output And/Or LogOutput(string) Action. </param>
+        public void CreateGP4(string OutputDirectory, bool ErrorChecking = true) {
+            if(!Directory.Exists(gamedata_folder)) {
+                DLog($"Could Not Find The Game Data Directory \"{gamedata_folder}\"");
+                return;
+            }
+
+
+            string GP4OutputPath;
+
+
+            // Timestamp For GP4, Same Format Sony Used Though Sony's Technically Only Tracks The Date,
+            // With The Time Left As 00:00, But Imma Just Add The Time. It Doesn't Break Anything).
+            var gp4_timestamp = $"{DateTime.Now.GetDateTimeFormats()[78]}";
+
+            // Alternate One To Accurately Track .gp4 Build Times
+            var internal_gp4_timestamp = new TimeSpan(DateTime.Now.Day, DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second, DateTime.Now.Millisecond);
+
+
+            WLog($"Starting .gp4 Creation. \nPasscode: {Passcode}\nSource .pkg Path: {BaseGamePackage}");
+
+
+            if(playgo_content_id != content_Id) {
+                DLog($"Content ID Mismatch Detected, Process Aborted\n[playgo-chunks.dat: {playgo_content_id} != param.sfo: {content_Id}]");
+
+                if(ErrorChecking)
+                return;
+            }
+
+
+            // Catch Conflicting Project Type Information
+            if(category == "gp" && !File.Exists(BaseGamePackage)) {
+                if(BaseGamePackage == null) {
+                    WLog("No Base Game Source .pkg Path Given For Patch .gp4, Using .pkg Name Default\n(.gp4 Will Expect Base Game .pkg To Be In The Same Directory As The .gp4)");
+                    if(ErrorChecking)
+                        return;
+                }
+                else
+                    WLog("Warning: Invalid Source .pkg Path Given. (File Does Not Currently Exist)");
+
+            }
+
+
+            // Create Elements
+            CreateBaseElements(category, gp4_timestamp, content_Id, Passcode, BaseGamePackage, app_ver, version, chunk_count, scenario_count);
+            CreateChunksElement(chunk_labels, chunk_count);
+            CreateFilesElement(file_paths, gamedata_folder);
+            CreateScenariosElement(scenario_labels);
+            CreateRootDirectoryElement(gamedata_folder);
+
+            
+            gp4.Save(GP4OutputPath = $@"{OutputDirectory}\{title_id}-{((category == "gd") ? "app" : "patch")}.gp4");
+
+            WLog($".gp4 Saved In {GP4OutputPath}");
+
+
+            DLog($"GP4 Creation Successful, Time Taken: {WriteElementsToGP4(internal_gp4_timestamp).Subtract(internal_gp4_timestamp)}".TrimEnd('0'));
+        }
+        #endregion
+
+
+        //////////////////////\\\\\\\\\\\\\\\\\\\\\
+        ///--     User Functions (Static)     --\\\
+        //////////////////////\\\\\\\\\\\\\\\\\\\\\
+        #region User Functions (Static)
+
+
+        /// <summary> Build A New .gp4 Project With The Default Settings Out Of The Given ProjectFolder, And Save It To The Specified OutputDirectory </summary>
+        /// 
+        /// <param name="ProjectFolder"></param>
+        /// <param name="OutputPath"> The Folder Or Full Path To Save The GP4 In/As.<br/>Providing A Folder Will Have The Program Name The .gp4 In The Default Naming Scheme For .gp4 Project Files.</param>
+        /// <param name="FileOrFolderBlacklist"></param>
+        /// <param name="SourcePkgPath"></param>
+        /// 
+        /// <returns> True If No Errors Were Found During The Creation Process. </returns>
+        public static bool CreateNewGP4(string ProjectFolder, string OutputPath, string SourcePkgPath, string[] FileOrFolderBlacklist = null) {
+
+            var gp4 = new GP4Creator(ProjectFolder, OutputPath) {
+                FileBlackList = FileOrFolderBlacklist,
+                BaseGamePackage = SourcePkgPath
+            };
+            gp4.ParseProjectFiles(ProjectFolder);
+            gp4.CreateGP4(OutputPath);
+
+
+            return true;
+        }
+
+        /// <summary> Build A New .gp4 Project With The Default Settings Out Of The Given ProjectFolder, And Save It To The Specified OutputDirectory </summary>
+        /// 
+        /// <param name="ProjectFolder"></param>
+        /// <param name="OutputPath"> The Folder Or Full Path To Save The GP4 In/As.<br/>Providing A Folder Will Have The Program Name The .gp4 In The Default Naming Scheme For .gp4 Project Files.</param>
+        /// <param name="FileOrFolderBlacklist"></param>
+        /// 
+        /// <returns> True If No Errors Were Found During The Creation Process. </returns>
+        public static bool CreateNewGP4(string ProjectFolder, string OutputPath, string[] FileOrFolderBlacklist = null) {
+
+            var gp4 = new GP4Creator(ProjectFolder, OutputPath);
+            gp4.ParseProjectFiles(ProjectFolder);
+            gp4.CreateGP4(OutputPath);
+
+
+            return true;
+        }
+        #endregion
+
+
+
+
+        ///////////////////////\\\\\\\\\\\\\\\\\\\\\\\
+        ///--     Main Application Functions     --\\\
+        ///////////////////////\\\\\\\\\\\\\\\\\\\\\\\
+        #region Main Application Functions
+
+        /// <summary> Output Log Messages To A Specified RichTextBox Control, And/Or To The Console If Applicable </summary>
+        private void WLog(object o) {
+            string s = o as string;
+
+            Console.WriteLine(s);
+
+            LogOutput(s);
+        }
+
+        /// <summary> Console Logging Method. </summary>
+        private static void DLog(object o) {
+
+            if(enable_output_channel[0])
+                try { Debug.WriteLine("#libgp4.dll: " + o); }
+                catch(Exception) { enable_output_channel[0] = false; }
+
+            if(!Console.IsOutputRedirected && enable_output_channel[1]) // Avoid Duplicate Writes
+                try { Console.WriteLine("#libgp4.dll: " + o); }
+                catch(Exception) { enable_output_channel[1] = false; }
+        }
+
+        /// <summary> Error Logging Method. </summary>
+        private static void ELog(string NodeName, string Error) {
+            var Message = (assertion_message.Replace("$|$", NodeName)).Replace("%|%", Error);
+
+            try { Debug.WriteLine("libgp4.dll: " + Message); }
+            catch(Exception) { enable_output_channel[0] = false; }
+
+            if(!Console.IsOutputRedirected) // Avoid Duplicate Writes
+                try { Console.WriteLine("libgp4.dll: " + Message); }
+                catch(Exception) { enable_output_channel[1] = false; }
+        }
+
+
 
         /// <summary>
         /// Check Whether The filepath Containts A Blacklisted String.<br/>
@@ -1623,8 +1665,8 @@ namespace libgp4 { // ver 1.26.100
                     return true;
                 }
 
-            if(UserBlacklist != null)
-                foreach(var blacklisted_file_or_folder in UserBlacklist) {
+            if(FileBlackList != null)
+                foreach(var blacklisted_file_or_folder in FileBlackList) {
                     if(filepath.Contains(blacklisted_file_or_folder)) {
 #if DEBUG
                         WLog($"User Ignoring: {filepath}");
