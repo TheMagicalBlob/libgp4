@@ -1234,6 +1234,20 @@ namespace libgp4 { // ver 1.26.100
         /////////////////\\\\\\\\\\\\\\\\\
         #region User Functions
 
+        /// <summary>
+        /// Add External FIles To The Project's File Listing (wip, this wouldn't work the way it is lol)
+        /// </summary>
+        public void AddFiles(string[] files) {
+            if(file_paths == null) {
+                file_paths = files;
+                return;
+            }
+
+            var buff = file_paths;
+            
+            buff.CopyTo(file_paths = new string[files.Length + buff.Length], 0);
+            files.CopyTo(file_paths, buff.Length);
+        }
 
         public void CreateNewGP4(string GamedataFolder) {
 
@@ -1320,7 +1334,7 @@ namespace libgp4 { // ver 1.26.100
         /// <param name="SourcePkgPath"></param>
         /// 
         /// <returns> True If No Errors Were Found During The Creation Process. </returns>
-        public static bool CreateNewGP4(string ProjectFolder, string OutputPath, string SourcePkgPath, string[] FileOrFolderBlacklist = null) {
+        public static bool CreateNewGP4(string ProjectFolder, string OutputPath, string SourcePkgPath = null, string[] FileOrFolderBlacklist = null) {
 
             var gp4 = new GP4Creator(ProjectFolder) {
                 BlacklistedFilesOrFolders = FileOrFolderBlacklist,
@@ -1332,26 +1346,6 @@ namespace libgp4 { // ver 1.26.100
 
             return true;
         }
-        /// <summary> Build A New .gp4 Project File For A Patch Package With The Default Settings Out Of The Given ProjectFolder, And Save It To The Specified OutputDirectory </summary>
-        /// 
-        /// <param name="ProjectFolder"> The Folder Containing The Game Data. </param>
-        /// <param name="OutputPath"> The Folder Or Full Path To Save The GP4 In/As.<br/>Providing A Folder Will Have The Program Name The .gp4 In The Default Naming Scheme For .gp4 Project Files.</param>
-        /// <param name="FileOrFolderBlacklist"></param>
-        /// 
-        /// <returns> True If No Errors Were Found During The Creation Process. </returns>
-        public static bool CreateNewGP4(string ProjectFolder, string OutputPath, string[] FileOrFolderBlacklist = null) {
-
-            var gp4 = new GP4Creator(ProjectFolder) {
-                BlacklistedFilesOrFolders = FileOrFolderBlacklist,
-                Keystone = false
-            };
-            gp4.ParseProjectFilesForGP4Variables(ProjectFolder);
-            gp4.CreateGP4(OutputPath);
-
-
-            return (gp4.ParseProjectFilesForGP4Variables(ProjectFolder) && gp4.CreateGP4(OutputPath));
-        }
-
         #endregion
 
 
@@ -1362,6 +1356,7 @@ namespace libgp4 { // ver 1.26.100
         ///////////////////////\\\\\\\\\\\\\\\\\\\\\\\
         #region Main Application Functions
 
+        /// <summary> //! </summary>
         private void ParseBasicVariables() {
 
         }
