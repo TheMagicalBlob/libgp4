@@ -1066,14 +1066,12 @@ namespace libgp4 { // ver 1.26.100
 
         /// <summary> Console Logging Method. </summary>
         private void DLog(object o) {
-            LoggingMethod(o as string);
-
             if(enable_output_channel[0])
-                try { Debug.WriteLine("#libgp4.dll: " + o); }
+                try { Console.WriteLine("#libgp4.dll: " + o); }
                 catch(Exception) { enable_output_channel[0] = false; }
 
             if(!Console.IsOutputRedirected && enable_output_channel[1]) // Avoid Duplicate Writes
-                try { Console.WriteLine("#libgp4.dll: " + o); }
+                try { Debug.WriteLine("#libgp4.dll: " + o); }
                 catch(Exception) { enable_output_channel[1] = false; }
         }
 
@@ -1081,11 +1079,11 @@ namespace libgp4 { // ver 1.26.100
         private static void ELog(string NodeName, string Error) {
             var Message = (assertion_message.Replace("$|$", NodeName)).Replace("%|%", Error);
 
-            try { Debug.WriteLine("libgp4.dll: " + Message); }
+            try { Console.WriteLine("libgp4.dll: " + Message); }
             catch(Exception) { enable_output_channel[0] = false; }
 
             if(!Console.IsOutputRedirected) // Avoid Duplicate Writes
-                try { Console.WriteLine("libgp4.dll: " + Message); }
+                try { Debug.WriteLine("libgp4.dll: " + Message); }
                 catch(Exception) { enable_output_channel[1] = false; }
         }
 
@@ -1176,6 +1174,12 @@ namespace libgp4 { // ver 1.26.100
         /// </summary>
         private string[] file_paths;
 
+        /// <summary>
+        /// List Of Additional Files To Include In The Project
+        /// </summary>
+        private string[][] extra_files;
+
+
         /// <summary> Root Gamedata Directory To Be Parsed (Should Contain At Least An Executable And sce_sys Folder)</summary>
         private string gamedata_folder;
 
@@ -1235,18 +1239,43 @@ namespace libgp4 { // ver 1.26.100
         #region User Functions
 
         /// <summary>
-        /// Add External FIles To The Project's File Listing (wip, this wouldn't work the way it is lol)
+        /// Add External Files To The Project's File Listing (wip, this wouldn't work the way it is lol)
         /// </summary>
-        public void AddFiles(string[] files) {
-            if(file_paths == null) {
-                file_paths = files;
+        public void AddFiles(string[] TargetPaths, string[] OriginalPaths) {
+            if(extra_files == null) {
+                extra_files = new string[OriginalPaths.Length][];
+
+                for(var i = 0; i < extra_files.Length; i++) {
+                    extra_files[i][0] = TargetPaths[i];
+                    extra_files[i][1] = OriginalPaths[i];
+                }
                 return;
             }
 
-            var buff = file_paths;
-            
-            buff.CopyTo(file_paths = new string[files.Length + buff.Length], 0);
-            files.CopyTo(file_paths, buff.Length);
+
+            var buffer = extra_files;
+            buffer.CopyTo(extra_files = new string[buffer.Length + OriginalPaths.Length][], 0);
+
+            for(var i = buffer.Length; i < extra_files.Length; i++) {
+                extra_files[i][0] = TargetPaths[i];
+                extra_files[i][1] = OriginalPaths[i];
+            }
+        }
+
+        /// <summary>
+        /// Add An External File To The Project's File Listing (wip, this wouldn't work the way it is lol)
+        /// </summary>
+        public void AddFile(string TargetPath, string OriginalPath) {
+            if(extra_files != null) {
+                var buffer = extra_files;
+                buffer.CopyTo(extra_files = new string[buffer.Length + 1][], 0);
+
+                extra_files[extra_files.Length - 1][0] = OriginalPath;
+                extra_files[extra_files.Length - 1][1] = TargetPath;
+                return;
+            }
+
+            extra_files = new string[][] { new string[] { OriginalPath, TargetPath } };
         }
 
         public void CreateNewGP4(string GamedataFolder) {
@@ -1266,7 +1295,6 @@ namespace libgp4 { // ver 1.26.100
             }
 
 
-            string GP4OutputPath;
 
 
             // Timestamp For GP4, Same Format Sony Used Though Sony's Technically Only Tracks The Date,
@@ -1301,20 +1329,18 @@ namespace libgp4 { // ver 1.26.100
             }
 
 
-            // Create Elements
-            CreateBaseElements(category, gp4_timestamp, content_Id, Passcode, BaseGamePackage, app_ver, version, chunk_count, scenario_count);
-            CreateChunksElement(chunk_labels, chunk_count);
-            CreateFilesElement(file_paths, gamedata_folder);
-            CreateScenariosElement(scenario_labels);
-            CreateRootDirectoryElement(gamedata_folder);
+            string GP4OutputPath;
+            var NewTime = new TimeSpan(DateTime.Now.Day, DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second, DateTime.Now.Millisecond);
+            var stamp = gp4.CreateComment($"gengp4.exe Alternative. Time Taken For Build Process: {NewTime.Subtract(internal_gp4_timestamp)}".TrimEnd('0'));
+            gp4.AppendChild(stamp);
 
-            
+            BuildGp4Elements(gp4_declaration);
+
+            WLog($"GP4 Creation Successful, Time Taken: {NewTime.Subtract(internal_gp4_timestamp)}".TrimEnd('0'));
+
             gp4.Save(GP4OutputPath = $@"{OutputDirectory}\{title_id}-{((category == "gd") ? "app" : "patch")}.gp4");
 
             WLog($".gp4 Saved In {GP4OutputPath}");
-
-
-            DLog($"GP4 Creation Successful, Time Taken: {WriteElementsToGP4(internal_gp4_timestamp).Subtract(internal_gp4_timestamp)}".TrimEnd('0'));
             return true;
         }
         #endregion
