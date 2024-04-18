@@ -39,9 +39,17 @@ namespace libgp4 {
         #region GP4 ELEMENT CREATION
 
         /// <summary>
-        ///   Create Base .gp4 Elements (Up To Chunk/Scenario Data)
+        ///  Create Base .gp4 Elements (Up To Chunk/Scenario Data).
+        ///   <br/><br/>
+        /// - psproject <br/>
+        /// - volume <br/>
+        /// - volume_type <br/>
+        /// - volume_id <br/>
+        /// - volume_ts <br/>
+        /// - package <br/>
+        /// - chunk_info <br/>
         /// </summary>
-        private void CreateBaseElements(string category, string timestamp, string content_id, string passcode, string pkg_source, string app_ver, string version, int chunk_count, int scenario_count) {
+        private XmlNode[] CreateBaseElements(string category, string timestamp, string content_id, string passcode, string pkg_source, string app_ver, string version, int chunk_count, int scenario_count) {
             var psproject = gp4.CreateElement("psproject");
             psproject.SetAttribute("fmt", "gp4");
             psproject.SetAttribute("version", "1000");
@@ -69,13 +77,15 @@ namespace libgp4 {
             var chunk_info = gp4.CreateElement("chunk_info");
             chunk_info.SetAttribute("chunk_count", $"{chunk_count}");
             chunk_info.SetAttribute("scenario_count", $"{scenario_count}");
+
+            return new XmlNode[] { psproject, volume, volume_type, volume_id, volume_ts, package, chunk_info };
         }
 
 
         /// <summary>
         ///   Create "files" Element, Containing File Destination And Source Paths, Along With Whether To Enable PFS Compression
         /// </summary>
-        private void CreateFilesElement(string[][] extra_files, string[] file_paths, string gamedata_folder) {
+        private XmlNode CreateFilesElement(string[][] extra_files, string[] file_paths, int chunk_count, string gamedata_folder) {
             var files = gp4.CreateElement("files");
 
             for(var index = 0; index < file_paths.Length; index++) {
@@ -111,12 +121,14 @@ namespace libgp4 {
 
                 files.AppendChild(file);
             }
+
+            return files;
         }
 
         /// <summary>
         ///    Create "rootdir" Element Containing The Game's File Structure through A Listing Of Each Directory And Subdirectory
         /// </summary>
-        private void CreateRootDirectoryElement(string gamedata_folder) {
+        private XmlNode CreateRootDirectoryElement(string gamedata_folder) {
             var rootdir = gp4.CreateElement("rootdir");
 
             void AppendSubfolder(string dir, XmlElement node) {
@@ -139,12 +151,13 @@ namespace libgp4 {
                 if(Directory.GetDirectories(folder).Length > 0) AppendSubfolder(folder, dir);
             }
 
+            return rootdir;
         }
 
         /// <summary>
         ///   Create "chunks" Element
         /// </summary>
-        private void CreateChunksElement(string[] chunk_labels, int chunk_count) {
+        private XmlNode CreateChunksElement(string[] chunk_labels, int chunk_count) {
             var chunks = gp4.CreateElement("chunks");
 
             for(int chunk_id = 0; chunk_id < chunk_count; chunk_id++) {
@@ -157,12 +170,13 @@ namespace libgp4 {
                     chunk.SetAttribute("label", $"{chunk_labels[chunk_id]}");
                 chunks.AppendChild(chunk);
             }
+            return chunks;
         }
 
         /// <summary>
         ///   Create "scenarios" Element
         /// </summary>
-        private XmlNode CreateScenariosElement(string[] scenario_labels) {
+        private XmlNode CreateScenariosElement(int default_scenario_id, int scenario_count, int[] initial_chunk_count, int[] scenario_types, string[] scenario_labels, int[] scenario_chunk_range) {
             var scenarios = gp4.CreateElement("scenarios");
             scenarios.SetAttribute("default_id", $"{default_scenario_id}");
 
@@ -189,14 +203,9 @@ namespace libgp4 {
         ///   Build .gp4 Structure And Save To File
         ///</summary>
         /// <returns> Time Taken For Build Process </returns>
-        public void BuildGp4Elements(XmlNode gp4_declaration, XmlNode psproject, XmlNode volume, XmlNode volume_type, XmlNode volume_id, XmlNode volume_ts, XmlNode package, XmlNode chunk_info, XmlNode files, XmlNode rootdir, XmlNode chunks) {
-
-            CreateBaseElements(category, gp4_timestamp, content_Id, Passcode, BaseGamePackage, app_ver, version, chunk_count, scenario_count);
-            CreateChunksElement(chunk_labels, chunk_count);
-            CreateFilesElement(extra_files, file_paths, gamedata_folder);
-            CreateScenariosElement(scenario_labels);
-            CreateRootDirectoryElement(gamedata_folder);
-
+        public void BuildGp4Elements(XmlNode gp4_declaration, XmlNode psproject, XmlNode volume, XmlNode volume_type, XmlNode volume_id, XmlNode scenarios, XmlNode volume_ts, XmlNode package, XmlNode chunk_info, XmlNode files, XmlNode rootdir, XmlNode chunks) {
+            var stamp = gp4.CreateComment($"gengp4.exe Alternative. (add a link to the library repository)");
+            gp4.AppendChild(stamp);
 
             gp4.AppendChild(gp4_declaration);
             gp4.AppendChild(psproject);
@@ -213,7 +222,7 @@ namespace libgp4 {
             psproject.AppendChild(rootdir);
 
             chunk_info.AppendChild(chunks);
-            chunk_info.AppendChild(CreateScenariosElement(scenario_labels));
+            chunk_info.AppendChild(scenarios);
         }
 
         #endregion
