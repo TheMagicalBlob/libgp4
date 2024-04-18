@@ -1060,7 +1060,8 @@ namespace libgp4 { // ver 1.26.100
             Console.WriteLine(o as string);
             if (!Console.IsOutputRedirected)
                 Debug.WriteLine(o as string);
-            
+
+            if(LoggingMethod != null)
             LoggingMethod(o as string);
         }
 
@@ -1127,7 +1128,7 @@ namespace libgp4 { // ver 1.26.100
         /// <summary>
         /// Optional Method To Use For Logging. [Function(string s)]
         /// </summary>
-        public Action<object> LoggingMethod;
+        public Action<object> LoggingMethod = null;
         #endregion
 
 
@@ -1275,9 +1276,9 @@ namespace libgp4 { // ver 1.26.100
         /// <summary> Build A New .gp4 Project File For The Provided Gamedata With The Current Options/Settings, And Save It In The Specified OutputDirectory.
         ///</summary>
         /// 
-        /// <param name="OutputDirectory"> Folder In Which To Place The Newly Build .gp4 Project File. </param>
+        /// <param name="OutputPath"> Folder In Which To Place The Newly Build .gp4 Project File. </param>
         /// <param name="ErrorChecking"> Set Whether Or Not To Abort The Creation Process If An Error Is Found That Would Cause .pkg Creation To Fail, Or Simply Log It To The Standard Console Output And/Or LogOutput(string) Action. </param>
-        public void CreateGP4(string OutputDirectory, bool ErrorChecking) {
+        public void CreateGP4(string OutputPath, bool ErrorChecking) {
             // Timestamp For GP4, Same Format Sony Used Though Sony's Technically Only Tracks The Date,
             // With The Time Left As 00:00, But Imma Just Add The Time. It Doesn't Break Anything).
             var gp4_timestamp = DateTime.Now.GetDateTimeFormats()[78];
@@ -1517,21 +1518,21 @@ namespace libgp4 { // ver 1.26.100
                 }
 
           
-                foreach(string param in SfoParams)
+                foreach(var param in SfoParams)
                     switch(param) {
                         case "APP_TYPE":
                             break;
                         case "APP_VER":
-                            app_ver = param;
+                            app_ver = (string)param;
                             break;
                         case "CATEGORY":
-                            category = param;
+                            category = (string)param;
                             break;
                         case "CONTENT_ID":
-                            content_id = param;
+                            content_id = (string)param;
                             break;
                         case "VERSION":
-                            version = param;
+                            version = (string)param;
                             break;
 
                             /* Might Do Something WIth These Later
@@ -1587,13 +1588,14 @@ namespace libgp4 { // ver 1.26.100
             );
 
 
-            if(!Directory.Exists(OutputDirectory)) {
+            if(Directory.Exists(OutputPath))
+                gp4.Save(OutputPath = $@"{OutputPath}\{title_id}-{((category == "gd") ? "app" : "patch")}.gp4");
 
-            }
+            else
+                gp4.Save(OutputPath);
 
-            gp4.Save(OutputDirectory = $@"{OutputDirectory}\{title_id}-{((category == "gd") ? "app" : "patch")}.gp4");
 
-            WLog($"GP4 Creation Successful, File Saved In {OutputDirectory}");
+            WLog($"GP4 Creation Successful, File Saved As {OutputPath}");
         }
         #endregion
 
@@ -1667,8 +1669,9 @@ namespace libgp4 { // ver 1.26.100
             }
 
             if(playgo_content_id != content_id) {
-                DLog($"Content ID Mismatch Detected, Process Aborted\n[playgo-chunks.dat: {playgo_content_id} != param.sfo: {content_id}]");
-                throw new Exception("Unimplemented Error Messsage//!");
+                var error = $"Content ID Mismatch Detected, Process Aborted\n[playgo-chunks.dat: {playgo_content_id} != param.sfo: {content_id}]";
+                DLog(error);
+                throw new Exception(error);
             }
 
 
