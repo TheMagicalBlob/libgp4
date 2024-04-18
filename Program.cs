@@ -1067,6 +1067,8 @@ namespace libgp4 { // ver 1.26.100
 
         /// <summary> Console Logging Method. </summary>
         private void DLog(object o) {
+            Debug.WriteLine("#libgp4.dll: " + o);
+
             if(enable_output_channel[0])
                 try { Console.WriteLine("#libgp4.dll: " + o); }
                 catch(Exception) { enable_output_channel[0] = false; }
@@ -1302,6 +1304,7 @@ namespace libgp4 { // ver 1.26.100
             XmlNode[] base_elements;
 
 
+            WLog($"Starting .gp4 Creation. \nPasscode: {Passcode}\nSource .pkg Path: {BaseGamePackage}");
 
 
             /* Parse playgo-chunks.dat For Required .gp4 Variables.
@@ -1517,23 +1520,32 @@ namespace libgp4 { // ver 1.26.100
                     }
                 }
 
-          
-                foreach(var param in SfoParams)
-                    switch(param) {
+                for(int i = 0; i < SfoParamLabels.Length; i++) {
+                    switch(SfoParamLabels[i]) {
                         case "APP_TYPE":
-                            break;
+                            //app_type = (string)param;
+                            //DLog($"verion Set As: {app_type}");
+                            continue;
                         case "APP_VER":
-                            app_ver = (string)param;
-                            break;
+                            app_ver = ((string)SfoParams[i]).Replace(".", "");
+                            DLog($"app_ver Set As: {app_ver}");
+                            continue;
                         case "CATEGORY":
-                            category = (string)param;
-                            break;
+                            category = (string)SfoParams[i];
+                            DLog($"category Set As: {category}");
+                            continue;
                         case "CONTENT_ID":
-                            content_id = (string)param;
-                            break;
+                            content_id = (string)SfoParams[i];
+                            DLog($"Content Id Set As: {content_id}");
+                            continue;
                         case "VERSION":
-                            version = (string)param;
-                            break;
+                            version = ((string)SfoParams[i]).Replace(".", "");
+                            DLog($"verion Set As: {version}");
+                            continue;
+                        case "TITLE_ID":
+                            title_id = ((string)SfoParams[i]);
+                            DLog($"title_id Set As: {title_id}");
+                            continue;
 
                             /* Might Do Something WIth These Later
                             case "FORMAT":
@@ -1545,12 +1557,10 @@ namespace libgp4 { // ver 1.26.100
                             case "TARGET_APP_VER":
                             case "TITLE":
                             case "TITLE_00":
-                            case "TITLE_ID":
-                                break;
                             */
                     }
+                }
             }
-
 
 
             // Get The Paths Of All Project Files & Subdirectories In The Given Project Folder. 
@@ -1558,19 +1568,18 @@ namespace libgp4 { // ver 1.26.100
             file_paths = new string[file_info.Length];
 
             for(var index = 0; index < file_info.Length; index++)
-                Debug.WriteLine("!>>-" + (file_paths[index] = file_info[index].FullName));
+                file_paths[index] = file_info[index].FullName;
             //\\
 
 
 
-            WLog($"Starting .gp4 Creation. \nPasscode: {Passcode}\nSource .pkg Path: {BaseGamePackage}");
-
+            // Check The .gp4 For Any Potential Errors
             if(ErrorChecking)
                 VerifyGP4(gamedata_folder, playgo_content_id, content_id, category);
 
 
 
-            var NewTime = new TimeSpan(DateTime.Now.Day, DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second, DateTime.Now.Millisecond);
+            //var NewTime = new TimeSpan(DateTime.Now.Day, DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second, DateTime.Now.Millisecond);
 
             BuildGp4Elements(
                 gp4_declaration,
@@ -1676,13 +1685,10 @@ namespace libgp4 { // ver 1.26.100
 
 
             // Catch Conflicting Project Type Information
-            if(category == "gp" && !File.Exists(BaseGamePackage)) {
-                if(BaseGamePackage == null) {
-                    WLog("No Base Game Source .pkg Path Given For Patch .gp4, Using .pkg Name Default\n(.gp4 Will Expect Base Game .pkg To Be In The Same Directory As The .gp4)");
+            if(category == "gp" && false) {
+                if(false) {
                     throw new Exception("Unimplemented Error Messsage//!");
                 }
-                else
-                    WLog("Warning: Invalid Source .pkg Path Given. (File Does Not Currently Exist)");
 
             }
         }

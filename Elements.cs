@@ -49,7 +49,7 @@ namespace libgp4 {
         /// - package <br/>
         /// - chunk_info <br/>
         /// </summary>
-        private XmlNode[] CreateBaseElements(string category, string timestamp, string content_id, string passcode, string pkg_source, string app_ver, string version, int chunk_count, int scenario_count) {
+        private XmlNode[] CreateBaseElements(string category, string timestamp, string content_id, string passcode, string base_package, string app_ver, string version, int chunk_count, int scenario_count) {
             var psproject = gp4.CreateElement("psproject");
             psproject.SetAttribute("fmt", "gp4");
             psproject.SetAttribute("version", "1000");
@@ -72,7 +72,7 @@ namespace libgp4 {
             package.SetAttribute("app_type", "full");
 
             if(category == "gp")
-                package.SetAttribute("app_path", $"{((pkg_source == "")? $"{content_id}-A{app_ver.Replace(".", "")}-V{version.Replace(".", "")}.pkg" : pkg_source)}");
+                package.SetAttribute("app_path", base_package ?? $"{content_id}-A{app_ver}-V{version}.pkg");
 
             var chunk_info = gp4.CreateElement("chunk_info");
             chunk_info.SetAttribute("chunk_count", $"{chunk_count}");
@@ -105,6 +105,7 @@ namespace libgp4 {
                 files.AppendChild(file);
             }
 
+            if (extra_files != null)
             for(var index = 0; index < extra_files.Length; index++) {
                 if(FileShouldBeExcluded(extra_files[index][1]))
                     continue;
@@ -203,9 +204,8 @@ namespace libgp4 {
         ///   Build .gp4 Structure And Save To File
         ///</summary>
         /// <returns> Time Taken For Build Process </returns>
-        public void BuildGp4Elements(XmlNode gp4_declaration, XmlNode psproject, XmlNode volume, XmlNode volume_type, XmlNode volume_id, XmlNode scenarios, XmlNode volume_ts, XmlNode package, XmlNode chunk_info, XmlNode files, XmlNode rootdir, XmlNode chunks) {
-            var stamp = gp4.CreateComment($"gengp4.exe Alternative. (add a link to the library repository)");
-            gp4.AppendChild(stamp);
+        public void BuildGp4Elements(XmlDeclaration gp4_declaration, XmlNode psproject, XmlNode volume, XmlNode volume_type, XmlNode volume_id, XmlNode scenarios, XmlNode volume_ts, XmlNode package, XmlNode chunk_info, XmlNode files, XmlNode rootdir, XmlNode chunks) {
+          
 
             gp4.AppendChild(gp4_declaration);
             gp4.AppendChild(psproject);
@@ -218,11 +218,13 @@ namespace libgp4 {
             volume.AppendChild(package);
             volume.AppendChild(chunk_info);
 
-            psproject.AppendChild(files);
-            psproject.AppendChild(rootdir);
-
             chunk_info.AppendChild(chunks);
             chunk_info.AppendChild(scenarios);
+
+            psproject.AppendChild(files);
+            psproject.AppendChild(rootdir); 
+            
+            gp4.AppendChild(gp4.CreateComment($"gengp4.exe Alternative. (add a link to the library repository)"));
         }
 
         #endregion
