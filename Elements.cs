@@ -8,30 +8,6 @@ namespace libgp4 {
     public partial class GP4Creator {
     #pragma warning disable CS1587
 
-        // GP4 Element Variables
-        private readonly XmlDocument gp4;
-        private readonly XmlDeclaration gp4_declaration;
-
-        /* <summary> XML Element Required For Valid .gp4 Project Creation </summary>
-        private static XmlElement
-            file,
-            psproject,
-            chunk,
-            scenario,
-            dir,
-            subdir,
-            chunks,
-            volume,
-            rootdir,
-            chunk_info,
-            files,
-            package,
-            scenarios,
-            volume_id,
-            volume_type,
-            volume_ts
-        ;
-        */
 
         /////////////////////\\\\\\\\\\\\\\\\\\\
         ///--     GP4 ELEMENT CREATION     --\\\
@@ -96,10 +72,10 @@ namespace libgp4 {
                 file.SetAttribute("targ_path", (file_paths[index].Replace(gamedata_folder + "\\", string.Empty)).Replace('\\', '/'));
                 file.SetAttribute("orig_path", file_paths[index]);
 
-                if(!SkipCompression(file_paths[index]))
+                if(!SkipPfsCompressionForFile(file_paths[index]))
                     file.SetAttribute("pfs_compression", "enable");
                 
-                if(!SkipChunkAttribute(file_paths[index]) && chunk_count - 1 != 0)
+                if(!SkipChunkAttributeForFile(file_paths[index]) && chunk_count - 1 != 0)
                     file.SetAttribute("chunks", $"0-{chunk_count - 1}");
                 
                 files.AppendChild(file);
@@ -114,10 +90,10 @@ namespace libgp4 {
                 file.SetAttribute("targ_path", (extra_files[index][0].Replace(gamedata_folder + "\\", string.Empty)).Replace('\\', '/'));
                 file.SetAttribute("orig_path", extra_files[index][1]);
 
-                if(!SkipCompression(extra_files[index][1]))
+                if(!SkipPfsCompressionForFile(extra_files[index][1]))
                     file.SetAttribute("pfs_compression", "enable");
 
-                if(!SkipChunkAttribute(extra_files[index][1]) && chunk_count - 1 != 0)
+                if(!SkipChunkAttributeForFile(extra_files[index][1]) && chunk_count - 1 != 0)
                     file.SetAttribute("chunks", $"0-{chunk_count - 1}");
 
                 files.AppendChild(file);

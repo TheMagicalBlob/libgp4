@@ -1050,44 +1050,46 @@ namespace libgp4 { // ver 1.26.100
             Passcode = "00000000000000000000000000000000";
             gamedata_folder = GamedataFolder;
             Keystone = true;
-
-            gp4_declaration = (gp4 = new XmlDocument()).CreateXmlDeclaration("1.1", "utf-8", "yes");
+            gp4 = new XmlDocument();
         }
 
-
-        /// <summary> Output Log Messages To A Custom Output Method (GP4Creator.LoggingMethod(string)), And/Or To The Console If Applicable </summary>
+        /// <summary> Output Log Messages To A Custom Output Method (GP4Creator.LoggingMethod(string)), And/Or To The Console If Applicable.
+        ///</summary>
         private void WLog(object o) {
+            #if DEBUG
             Console.WriteLine(o as string);
-            if (!Console.IsOutputRedirected)
+            if(!Console.IsOutputRedirected)
                 Debug.WriteLine(o as string);
+            #endif
 
             if(LoggingMethod != null)
             LoggingMethod(o as string);
         }
 
-        /// <summary> Console Logging Method. </summary>
+        /// <summary> Console Logging Method.
+        ///</summary>
         private void DLog(object o) {
-            Debug.WriteLine("#libgp4.dll: " + o);
-
-            if(enable_output_channel[0])
-                try { Console.WriteLine("#libgp4.dll: " + o); }
-                catch(Exception) { enable_output_channel[0] = false; }
-
-            if(!Console.IsOutputRedirected && enable_output_channel[1]) // Avoid Duplicate Writes
-                try { Debug.WriteLine("#libgp4.dll: " + o); }
-                catch(Exception) { enable_output_channel[1] = false; }
-        }
-
-        /// <summary> Error Logging Method. </summary>
-        private static void ELog(string NodeName, string Error) {
-            var Message = (assertion_message.Replace("$|$", NodeName)).Replace("%|%", Error);
-
-            try { Console.WriteLine("libgp4.dll: " + Message); }
-            catch(Exception) { enable_output_channel[0] = false; }
+            #if DEBUG
+            try { Console.WriteLine("#libgp4.dll: " + o); }
+            catch(Exception){}
 
             if(!Console.IsOutputRedirected) // Avoid Duplicate Writes
-                try { Debug.WriteLine("libgp4.dll: " + Message); }
-                catch(Exception) { enable_output_channel[1] = false; }
+                try { Debug.WriteLine("#libgp4.dll: " + o); }
+                catch(Exception){}
+            #endif
+        }
+
+        /// <summary> Error Logging Method.
+        ///</summary>
+        private void ELog(string NodeName, string Error) {
+            var Message = (assertion_message.Replace("$|$", NodeName)).Replace("%|%", Error);
+
+            if(LoggingMethod != null)
+                LoggingMethod(Message);
+
+#if DEBUG
+            DLog(Message);
+#endif
         }
 
 
@@ -1148,6 +1150,11 @@ namespace libgp4 { // ver 1.26.100
         /// <summary> List Of Additional Files To Include In The Project, Added by The User.
         ///</summary>
         string[][] extra_files;
+
+
+        /// <summary> Main GP4 Structure Refference.
+        ///</summary>
+        private readonly XmlDocument gp4;
 
         private static readonly string assertion_message = $"An Error Occured When Reading Attribute From The Following Node: $|$\nMessage: %|%";
 
@@ -1596,7 +1603,7 @@ namespace libgp4 { // ver 1.26.100
             //var NewTime = new TimeSpan(DateTime.Now.Day, DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second, DateTime.Now.Millisecond);
 
             BuildGp4Elements(
-                gp4_declaration,
+                gp4.CreateXmlDeclaration("1.1", "utf-8", "yes"),
                 (base_elements = CreateBaseElements(category, gp4_timestamp, content_id, Passcode, SourcePkgPath, app_ver, version, chunk_count, scenario_count))[0],
                 volume: base_elements[1],
                 volume_type: base_elements[2],
@@ -1623,56 +1630,6 @@ namespace libgp4 { // ver 1.26.100
         #endregion
 
 
-        //////////////////////\\\\\\\\\\\\\\\\\\\\\
-        ///--     User Functions (Static)     --\\\
-        //////////////////////\\\\\\\\\\\\\\\\\\\\\
-        #region User Functions (Static)
-
-
-        /// <summary> Build A New .gp4 Project File For A Patch Package With The Default Settings Out Of The Given ProjectFolder, And Save It To The Specified OutputDirectory </summary>
-        /// 
-        /// <param name="ProjectFolder"> The Folder Containing The Game Data. </param>
-        /// <param name="OutputPath"> The Folder Or Full Path To Save The GP4 In/As.<br/>Providing A Folder Will Have The Program Name The .gp4 In The Default Naming Scheme For .gp4 Project Files.</param>
-        /// <param name="SourcePkgPath"></param>
-        /// <param name="ErrorChecking"></param>
-        /// 
-        /// <returns> The Path Of The Newly Created .gp4. </returns>
-        public static string CreateNewGP4(string ProjectFolder, string OutputPath, bool ErrorChecking, string SourcePkgPath = null) {
-
-            var gp4 = new GP4Creator(ProjectFolder) {
-                BaseGamePackage = SourcePkgPath
-            };
-            gp4.CreateGP4(OutputPath, ErrorChecking);
-
-            return OutputPath;
-        }
-
-
-        /// <summary> Build A New .gp4 Project File For A Patch Package With The Default Settings Out Of The Given ProjectFolder, And Save It To The Specified OutputDirectory </summary>
-        /// 
-        /// <param name="ProjectFolder"> The Folder Containing The Game Data. </param>
-        /// <param name="OutputPath"> The Folder Or Full Path To Save The GP4 In/As.<br/>Providing A Folder Will Have The Program Name The .gp4 In The Default Naming Scheme For .gp4 Project Files.</param>
-        /// <param name="FileOrFolderBlacklist"></param>
-        /// <param name="SourcePkgPath"></param>
-        /// 
-        /// <returns> True If No Errors Were Found During The Creation Process. </returns>
-        public static bool CreateNewGP4(string ProjectFolder, string[] FileOrFolderBlacklist, string SourcePkgPath = null) {
-
-            var gp4 = new GP4Creator(ProjectFolder) {
-                BlacklistedFilesOrFolders = FileOrFolderBlacklist,
-                BaseGamePackage = SourcePkgPath
-            };
-
-
-            gp4.CreateGP4(Directory.GetCurrentDirectory(), true);
-
-
-            return true;
-        }
-        #endregion
-
-
-
 
         ///////////////////////\\\\\\\\\\\\\\\\\\\\\\\
         ///--     Main Application Functions     --\\\
@@ -1680,12 +1637,14 @@ namespace libgp4 { // ver 1.26.100
         #region Main Application Functions
 
         /// <summary> //! </summary>
-        private void ParseBasicVariables() {
+        private void ParseGP4Variables(string gamedata_folder) {
 
         }
 
 
         private void VerifyGP4(string gamedata_folder, string playgo_content_id, string content_id, string category) {
+            string Errors = string.Empty;
+
             if(!Directory.Exists(gamedata_folder)) {
                 DLog($"Could Not Find The Game Data Directory \"{gamedata_folder}\"");
                 throw new Exception("Unimplemented Error Messsage//!");
@@ -1699,13 +1658,35 @@ namespace libgp4 { // ver 1.26.100
 
 
             // Catch Conflicting Project Type Information
-            if(category == "gp" && false) {
-                if(false) {
+            if(category == "gp" && false)
+                if(false)
                     throw new Exception("Unimplemented Error Messsage//!");
-                }
 
-            }
+
+
+            //===========================\\
+            //| No Errors Were Detected |\\
+            //===========================\\
+            if(Errors == string.Empty)
+                return;
+
+
+            //==================================================\\
+            //| Throw An Exception If Any Errors Were Detected |\\
+            //==================================================\\
+
+            string Message;
+            var ErrorCount = (Errors.Length - Errors.Replace("\n\n", "").Length) / 2;
+
+            if(ErrorCount == 1)
+                Message = $"The Following Error Was Found During The .gp4 Project Creation With Gamedata In: {gamedata_folder}.\n{Errors}";
+            else
+                Message = $"The Following {ErrorCount} Errors Were Found During The .gp4 Project Creation With Gamedata In: {gamedata_folder}.\n{Errors}";
+
+            DLog(Message);
+            throw new InvalidDataException(Message);
         }
+
 
         /// <summary>
         /// Check Whether The filepath Containts A Blacklisted String.<br/>
@@ -1714,6 +1695,7 @@ namespace libgp4 { // ver 1.26.100
         /// <returns> True If The File in filepath Shouldn't Be Included In The .gp4 </returns>
         private bool FileShouldBeExcluded(string filepath) {
             string filename = string.Empty;
+
             if(filepath.Contains('.'))
                 filename = filepath.Remove(filepath.LastIndexOf(".")).Substring(filepath.LastIndexOf('\\') + 1); // Tf Am I Doing Here?
 
@@ -1738,12 +1720,13 @@ namespace libgp4 { // ver 1.26.100
             return false;
         }
 
+
         /// <summary>
         /// Check Whether Or Not The File At filepath Should Have Pfs Compression Enabled.<br/>
         /// This Is Almost Certainly Incomplete. Need More Brain Juice.
         /// </summary>
         /// <returns> True If Pfs Compression Should Be Enabled. </returns>
-        private bool SkipCompression(string filepath) {
+        private bool SkipPfsCompressionForFile(string filepath) {
             string[] Blacklist = new string[] {
                 "sce_sys",
                 "sce_module",
@@ -1766,7 +1749,7 @@ namespace libgp4 { // ver 1.26.100
         /// [This Is Almost Certainly Incomplete. Need More Brain Juice.]
         /// </summary>
         /// <returns> True If The Chunk Attribute Should Be Skipped. </returns>
-        private bool SkipChunkAttribute(string filepath) {
+        private bool SkipChunkAttributeForFile(string filepath) {
             string[] Blacklist = new string[] {
                 "sce_sys",
                 "sce_module",
