@@ -1128,6 +1128,11 @@ namespace libgp4 { // ver 1.26.100
         public string SourcePkgPath;
 
         /// <summary>
+        /// The Application's Default Name, Read From The param.sfo In The Provided Gamedata Folder
+        /// </summary>
+        public string AppTitle;
+
+        /// <summary>
         /// Optional Method To Use For Logging. [Function(string s)]
         /// </summary>
         public Action<object> LoggingMethod = null;
@@ -1281,25 +1286,37 @@ namespace libgp4 { // ver 1.26.100
         /// <param name="OutputPath"> Folder In Which To Place The Newly Build .gp4 Project File. </param>
         /// <param name="ErrorChecking"> Set Whether Or Not To Abort The Creation Process If An Error Is Found That Would Cause .pkg Creation To Fail, Or Simply Log It To The Standard Console Output And/Or LogOutput(string) Action. </param>
         public void CreateGP4(string OutputPath, bool ErrorChecking) {
+            
             // Timestamp For GP4, Same Format Sony Used Though Sony's Technically Only Tracks The Date,
             // With The Time Left As 00:00, But Imma Just Add The Time. It Doesn't Break Anything).
             var gp4_timestamp = DateTime.Now.GetDateTimeFormats()[78];
 
-            int chunk_count, scenario_count, default_scenario_id;
-            int[] scenario_types, scenario_chunk_range, initial_chunk_count;
+
+            int
+                chunk_count,    // Amount Of Chunks In The Application
+                scenario_count, // Amount Of Scenarios In The Application
+                default_scenario_id // Id/Index Of The Application's Default Scenario
+            ;
+
+            int[]
+                scenario_types,       // The Types Of Each Scenario (SP / MP)
+                scenario_chunk_range, // Array Of Chunk Ranges For Each Scenario
+                initial_chunk_count   // The Initial Chunk Count Of Each Scenario
+            ;
+
             string
-                app_ver = null,
-                version = null,
-                playgo_content_id = null,
-                content_id = null,
-                title_id = null,
-                category = null
+                app_ver = null,    // App Patch Version
+                version = null,    // Remaster Ver
+                playgo_content_id = null, // Content Id From sce_sys/playgo-chunks.dat To Check Against Content Id In sce_sys/param.sfo
+                content_id = null, // Content Id From sce_sys/param.sfo
+                title_id = null,   // Application's Title Id
+                category = null    // Category Of The PS4 Application (gd / gp)
             ;
 
             string[]
-                file_paths, // List Of All Files In The Project Folder (Excluding Blacklisted Files/Directories)
-                chunk_labels,
-                scenario_labels
+                file_paths,     // Array Of All Files In The Project Folder (Excluding Blacklisted Files/Directories)
+                chunk_labels,   // Array Of All Chunk Names
+                scenario_labels // Array Of All Scenario Names
             ;
             XmlNode[] base_elements;
 
@@ -1528,23 +1545,21 @@ namespace libgp4 { // ver 1.26.100
                             continue;
                         case "APP_VER":
                             app_ver = ((string)SfoParams[i]).Replace(".", "");
-                            DLog($"app_ver Set As: {app_ver}");
                             continue;
                         case "CATEGORY":
                             category = (string)SfoParams[i];
-                            DLog($"category Set As: {category}");
                             continue;
                         case "CONTENT_ID":
                             content_id = (string)SfoParams[i];
-                            DLog($"Content Id Set As: {content_id}");
                             continue;
                         case "VERSION":
                             version = ((string)SfoParams[i]).Replace(".", "");
-                            DLog($"verion Set As: {version}");
                             continue;
                         case "TITLE_ID":
                             title_id = ((string)SfoParams[i]);
-                            DLog($"title_id Set As: {title_id}");
+                            continue;
+                        case "TITLE":
+                            AppTitle = ((string)SfoParams[i]);
                             continue;
 
                             /* Might Do Something WIth These Later
@@ -1555,7 +1570,6 @@ namespace libgp4 { // ver 1.26.100
                             case "PUBTOOLVER":
                             case "SYSTEM_VER":
                             case "TARGET_APP_VER":
-                            case "TITLE":
                             case "TITLE_00":
                             */
                     }
