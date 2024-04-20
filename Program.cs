@@ -1035,7 +1035,6 @@ namespace libgp4 { // ver 1.26.100
     }
 
 
-
     /// <summary> A Small Class For Creating new .gp4 Files From Raw PS4 Gamedata, With A Few Options Related To .pkg Creation.
     ///</summary>
     public partial class GP4Creator {
@@ -1056,24 +1055,27 @@ namespace libgp4 { // ver 1.26.100
         /// <summary> Output Log Messages To A Custom Output Method (GP4Creator.LoggingMethod(string)), And/Or To The Console If Applicable.
         ///</summary>
         private void WLog(object o) {
-            #if DEBUG
-            Console.WriteLine(o as string);
-            if(!Console.IsOutputRedirected)
-                Debug.WriteLine(o as string);
-            #endif
-
             if(LoggingMethod != null)
-            LoggingMethod(o as string);
+                LoggingMethod(o as string);
+#if DEBUG
+            try { Console.WriteLine(o as string); }
+            catch(Exception){}
+
+            if(!Console.IsOutputRedirected) // Avoid Duplicate Writes
+                try { Debug.WriteLine(o as string); }
+                catch(Exception){}
+#endif
+
         }
 
         /// <summary> Console Logging Method.
         ///</summary>
-        private void DLog(object o) {
+        private void DLog(object o, int i = 1) {
             #if DEBUG
             try { Console.WriteLine("#libgp4.dll: " + o); }
             catch(Exception){}
 
-            if(!Console.IsOutputRedirected) // Avoid Duplicate Writes
+            if(!Console.IsOutputRedirected)
                 try { Debug.WriteLine("#libgp4.dll: " + o); }
                 catch(Exception){}
             #endif
@@ -1147,21 +1149,15 @@ namespace libgp4 { // ver 1.26.100
         //////////////////////\\\\\\\\\\\\\\\\\\\\\
         #region GP4 Attributes / Values
 
-        /// <summary> List Of Additional Files To Include In The Project, Added by The User.
-        ///</summary>
-        string[][] extra_files;
-
-
         /// <summary> Main GP4 Structure Refference.
         ///</summary>
         private readonly XmlDocument gp4;
 
         private static readonly string assertion_message = $"An Error Occured When Reading Attribute From The Following Node: $|$\nMessage: %|%";
 
-        /// <summary> Catch DLog Errors, Disabling Whichever Output Threw The Error.
+        /// <summary> Root Gamedata Directory To Be Parsed. (Should Contain At Least An Executable And sce_sys Folder)
         ///</summary>
-        private static readonly bool[] enable_output_channel = new bool[] { true, true };
-
+        private string gamedata_folder;
 
         /// <summary> Files That Aren't Meant To Be Added To A .pkg.
         ///</summary>
@@ -1193,14 +1189,10 @@ namespace libgp4 { // ver 1.26.100
                     @"sce_sys\app\playgo-manifest.xml"
         };
 
+        /// <summary> List Of Additional Files To Include In The Project, Added by The User.
+        ///</summary>
+        private string[][] extra_files;
 
-        /// <summary>
-        /// Root Gamedata Directory To Be Parsed. (Should Contain At Least An Executable And sce_sys Folder)
-        /// </summary>
-        private string gamedata_folder;
-
-        private readonly string[] required_sfo_variables = new string[] { "APP_VER", "CATEGORY", "CONTENT_ID", "TITLE_ID", "VERSION" };
-        
         private static readonly string[] DEBUG_misc_sfo_variables = new string[] {
                 "APP_TYPE",
                 "APP_VER",
@@ -1596,7 +1588,7 @@ namespace libgp4 { // ver 1.26.100
 
             // Check The .gp4 For Any Potential Errors
             if(ErrorChecking)
-                VerifyGP4(gamedata_folder, playgo_content_id, content_id, category);
+                VerifyGP4(gamedata_folder, playgo_content_id, content_id, category, version, app_ver);
 
 
 
@@ -1642,49 +1634,81 @@ namespace libgp4 { // ver 1.26.100
         }
 
 
-        private void VerifyGP4(string gamedata_folder, string playgo_content_id, string content_id, string category) {
+        private void VerifyGP4(string gamedata_folder, string playgo_content_id, string content_id, string category, string version, string app_ver) {
             string Errors = string.Empty;
 
             if(!Directory.Exists(gamedata_folder)) {
-                DLog($"Could Not Find The Game Data Directory \"{gamedata_folder}\"");
-                throw new Exception("Unimplemented Error Messsage//!");
+                var Error = $"Could Not Find The Provided Game Data Directory.\n\nPath Provided:\n\"{gamedata_folder}\"";
+                WLog(Error);
+                throw new Exception(Error);
             }
 
             if(playgo_content_id != content_id) {
-                var error = $"Content ID Mismatch Detected, Process Aborted\n[playgo-chunks.dat: {playgo_content_id} != param.sfo: {content_id}]";
-                DLog(error);
-                throw new Exception(error);
+                var Error = $"Content ID Mismatch Detected, Process Aborted\n[playgo-chunks.dat: {playgo_content_id} != param.sfo: {content_id}]";
+                WLog(Error);
+                throw new Exception(Error);
             }
 
 
+
             // Catch Conflicting Project Type Information
-            if(category == "gp" && false)
-                if(false)
-                    throw new Exception("Unimplemented Error Messsage//!");
+            if(category == "gp" && app_ver == "1.00") {
+                var Error = $"Invalid App Version For Patch Package. App Version Must Be Passed 1.00.";
+                WLog(Error);
+                throw new Exception(Error);
+            }
+
+            else if(category == "gd" && app_ver != "1.00") {
+                var Error = $"Invalid App Version For Application Package. App Version Was {app_ver}, Must Be 1.00.";
+                WLog(Error);
+                throw new Exception(Error);
+            }
 
 
 
-            //===========================\\
-            //| No Errors Were Detected |\\
-            //===========================\\
+            if(Passcode.Length < 32) {
+                var Error = $"Invalid Password Length, Must Be A 32-Character String.";
+                WLog(Error);
+                throw new Exception(Error);
+            }
+
+
+
+            if(SourcePkgPath != null && SourcePkgPath[SourcePkgPath.Length - 1] == '\\') {
+                var Error = $"Invalid Base Application .pkg Path.\nDirectory \"{SourcePkgPath}\" Was Given.";
+                WLog(Error);
+                throw new Exception(Error);
+            }
+
+
+
+            if(true && false) {
+                var Error = $"Unimplemented Error Message.";
+                WLog(Error);
+                throw new Exception(Error);
+            }
+
+
+
+            //  No Errors Detected  \\
             if(Errors == string.Empty)
                 return;
+
 
 
             //==================================================\\
             //| Throw An Exception If Any Errors Were Detected |\\
             //==================================================\\
 
-            string Message;
             var ErrorCount = (Errors.Length - Errors.Replace("\n\n", "").Length) / 2;
 
             if(ErrorCount == 1)
-                Message = $"The Following Error Was Found During The .gp4 Project Creation With Gamedata In: {gamedata_folder}.\n{Errors}";
+                Errors = $"The Following Error Was Found During The .gp4 Project Creation With Gamedata In: {gamedata_folder}.\n{Errors}";
             else
-                Message = $"The Following {ErrorCount} Errors Were Found During The .gp4 Project Creation With Gamedata In: {gamedata_folder}.\n{Errors}";
+                Errors = $"The Following {ErrorCount} Errors Were Found During The .gp4 Project Creation With Gamedata In: {gamedata_folder}.\n{Errors}";
 
-            DLog(Message);
-            throw new InvalidDataException(Message);
+            DLog(Errors);
+            throw new InvalidDataException(Errors);
         }
 
 
