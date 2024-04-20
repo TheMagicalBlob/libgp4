@@ -1052,116 +1052,30 @@ namespace libgp4 { // ver 1.26.100
             gp4 = new XmlDocument();
         }
 
-        /// <summary> Output Log Messages To A Custom Output Method (GP4Creator.LoggingMethod(string)), And/Or To The Console If Applicable.
-        ///</summary>
-        private void WLog(object o) {
-            if(LoggingMethod != null)
-                LoggingMethod(o as string);
-#if DEBUG
-            try { Console.WriteLine(o as string); }
-            catch(Exception){}
-
-            if(!Console.IsOutputRedirected) // Avoid Duplicate Writes
-                try { Debug.WriteLine(o as string); }
-                catch(Exception){}
-#endif
-
-        }
-
-        /// <summary> Console Logging Method.
-        ///</summary>
-        private void DLog(object o, int i = 1) {
-            #if DEBUG
-            try { Console.WriteLine("#libgp4.dll: " + o); }
-            catch(Exception){}
-
-            if(!Console.IsOutputRedirected)
-                try { Debug.WriteLine("#libgp4.dll: " + o); }
-                catch(Exception){}
-            #endif
-        }
-
-        /// <summary> Error Logging Method.
-        ///</summary>
-        private void ELog(string NodeName, string Error) {
-            var Message = (assertion_message.Replace("$|$", NodeName)).Replace("%|%", Error);
-
-            if(LoggingMethod != null)
-                LoggingMethod(Message);
-
-#if DEBUG
-            DLog(Message);
-#endif
-        }
-
-
-        ////////////////////////\\\\\\\\\\\\\\\\\\\\\\\
-        //--     User Options For GP4 Creation     --\\
-        ////////////////////////\\\\\\\\\\\\\\\\\\\\\\\
-        #region User Options For GP4 Creation
-
-        /// <summary>
-        /// Include Keystone In The .gp4's File Listing. <br/>
-        /// (False By Default)
-        /// </summary>
-        public bool Keystone;
-
-        /// <summary> Limit GP4 Log Verbosity. </summary>
-        //public bool VerboseLogging; UNIMPLEMENTED
-        
-        /// <summary>
-        /// The 32-bit Key Used To Encrypt The .pkg. Required For Extraction With orbis-pub-chk. <br/>
-        /// (No Effect On Dumping, You Can Leave This Alone)
-        /// </summary>
-        public string Passcode;
-
-        /// <summary>
-        /// Necessary Variable For The Creation Of Patch A .pkg.<br/><br/>
-        /// Path Of The Base Game Pkg You're Going To Install The Created Patch Package To. (Patch Packages Must Be Married To Their Intended Base)
-        /// </summary>
-        public string BaseGamePackage;
-
-        /// <summary>
-        /// An Array Containing The Names Of Any Files Or Folders That Are To Be Excluded From The .gp4 Project.
-        /// </summary>
-        public string[] BlacklistedFilesOrFolders;
-
-        /// <summary>
-        /// Path To The Base Application Package The New Package Is To Be Married To.
-        /// </summary>
-        public string SourcePkgPath;
-
-        /// <summary>
-        /// The Application's Default Name, Read From The param.sfo In The Provided Gamedata Folder
-        /// </summary>
-        public string AppTitle;
-
-        /// <summary>
-        /// Optional Method To Use For Logging. [Function(string s)]
-        /// </summary>
-        public Action<object> LoggingMethod = null;
-        #endregion
 
 
 
-        //////////////////////\\\\\\\\\\\\\\\\\\\\\
-        ///--     GP4 Attributes / Values     --\\\
-        //////////////////////\\\\\\\\\\\\\\\\\\\\\
-        #region GP4 Attributes / Values
+        ///////////////////////\\\\\\\\\\\\\\\\\\\\\
+        ///--     Basic Internal Variables     --\\\
+        ///////////////////////\\\\\\\\\\\\\\\\\\\\\
+        #region Basic Internal Variables
 
         /// <summary> Main GP4 Structure Refference.
         ///</summary>
         private readonly XmlDocument gp4;
 
+        /// <summary>
+        /// 
+        /// </summary>
         private static readonly string assertion_message = $"An Error Occured When Reading Attribute From The Following Node: $|$\nMessage: %|%";
 
         /// <summary> Root Gamedata Directory To Be Parsed. (Should Contain At Least An Executable And sce_sys Folder)
         ///</summary>
         private string gamedata_folder;
 
-        /// <summary> Files That Aren't Meant To Be Added To A .pkg.
+        /// <summary> The Base Array Files That Are Always To Be Excluded From .gp4 Projects.
         ///</summary>
-        private readonly string[] project_file_blacklist = new string[] {
+        public readonly string[] DefaultBlacklist = new string[] {
                   // Drunk Canadian Guy
                     "right.sprx",
                     "sce_discmap.plt",
@@ -1193,6 +1107,7 @@ namespace libgp4 { // ver 1.26.100
         ///</summary>
         private string[][] extra_files;
 
+        // Collection of Parameters Parsed From The Last of Us Part II, Kept For Testing Purposes
         private static readonly string[] DEBUG_misc_sfo_variables = new string[] {
                 "APP_TYPE",
                 "APP_VER",
@@ -1229,7 +1144,109 @@ namespace libgp4 { // ver 1.26.100
                 "USER_DEFINED_PARAM_1",
                 "VERSION"
         };
+
+
+        /// <summary>
+        /// Output Log Messages To A Custom Output Method (GP4Creator.LoggingMethod(string)), And/Or To The Console If Applicable.<br/><br/>
+        /// Duplicates Message To Standard Console Output As Well.
+        ///</summary>
+        private void WLog(object o) {
+            if(LoggingMethod != null)
+                LoggingMethod(o as string);
+
+#if DEBUG
+            DLog(o, null); // Exclude "#libgp4.dll: " Prefix From Indirect Debug Log Calls
+#endif
+        }
+
+        /// <summary> Console Logging Method.
+        ///</summary>
+        private void DLog(object o, string i = "#libgp4.dll: ") {
+            #if DEBUG
+            try { Console.WriteLine(i + o); }
+            catch(Exception){}
+
+            if(!Console.IsOutputRedirected)
+                try { Debug.WriteLine(i + o); }
+                catch(Exception){}
+            #endif
+        }
+
+        /// <summary> Error Logging Method.
+        ///</summary>
+        private void ELog(string NodeName, string Error) {
+            var Message = (assertion_message.Replace("$|$", NodeName)).Replace("%|%", Error);
+
+            if(LoggingMethod != null)
+                LoggingMethod(Message);
+
+#if DEBUG
+            DLog(Message);
+#endif
+        }
         #endregion
+
+
+
+
+        ////////////////////////\\\\\\\\\\\\\\\\\\\\\\\
+        //--     User Options For GP4 Creation     --\\
+        ////////////////////////\\\\\\\\\\\\\\\\\\\\\\\
+        #region User Options For GP4 Creation
+
+        /// <summary>
+        /// Include Keystone In The .gp4's File Listing. <br/>
+        /// (False By Default)
+        /// </summary>
+        public bool Keystone;
+
+        /// <summary> Limit GP4 Log Verbosity. </summary>
+        public int VerboseLogging; // UNIMPLEMENTED
+        
+        /// <summary>
+        /// The 32-bit Key Used To Encrypt The .pkg. Required For Extraction With orbis-pub-chk. <br/>
+        /// (No Effect On Dumping, You Can Leave This Alone)
+        /// </summary>
+        public string Passcode;
+
+        /// <summary>
+        /// Necessary Variable For The Creation Of Patch A .pkg.<br/><br/>
+        /// Path Of The Base Game Pkg You're Going To Install The Created Patch Package To. (Patch Packages Must Be Married To Their Intended Base)
+        /// </summary>
+        public string BaseGamePackage;
+
+        /// <summary>
+        /// An Array Containing The Names Of Any Files Or Folders That Are To Be Excluded From The .gp4 Project.
+        /// </summary>
+        public string[] BlacklistedFilesOrFolders;
+
+        /// <summary>
+        /// Path To The Base Application Package The New Package Is To Be Married To.
+        /// </summary>
+        public string SourcePkgPath;
+
+        /// <summary>
+        /// Optional Method To Use For Logging. [Function(string s)]
+        /// </summary>
+        public Action<object> LoggingMethod = null;
+
+
+#if DEBUG
+        
+        /// <summary>
+        /// The Application's Default Name, Read From The param.sfo In The Provided Gamedata Folder.
+        /// </summary>
+        public string AppTitle { get; private set; }
+
+        /// <summary>
+        /// The Application's Intended Package Type.
+        /// </summary>
+        public int AppType { get; private set; }
+
+#endif
+        #endregion
+
+
 
 
 
@@ -1279,8 +1296,11 @@ namespace libgp4 { // ver 1.26.100
         }
 
 
-        /// <summary> Build A New .gp4 Project File For The Provided Gamedata With The Current Options/Settings, And Save It In The Specified OutputDirectory.
-        ///</summary>
+        /// <summary>
+        /// Build A New .gp4 Project File For The Provided Gamedata With The Current Options/Settings, And Save It In The Specified OutputDirectory.<br/><br/>
+        /// First, Parses gamedata_folder\sce_sys\playgo-chunks.dat &amp; gamedata_folder\sce_sys\param.sfo For Parameters Required For .gp4 Creation,<br/>
+        /// Then Saves All File/Subdirectory Paths In The Gamedata Folder
+        /// </summary>
         /// 
         /// <param name="OutputPath"> Folder In Which To Place The Newly Build .gp4 Project File. </param>
         /// <param name="ErrorChecking"> Set Whether Or Not To Abort The Creation Process If An Error Is Found That Would Cause .pkg Creation To Fail, Or Simply Log It To The Standard Console Output And/Or LogOutput(string) Action. </param>
@@ -1539,8 +1559,7 @@ namespace libgp4 { // ver 1.26.100
                 for(int i = 0; i < SfoParamLabels.Length; i++) {
                     switch(SfoParamLabels[i]) {
                         case "APP_TYPE":
-                            //app_type = (string)param;
-                            //DLog($"verion Set As: {app_type}");
+                            AppType = (int)SfoParams[i];
                             continue;
                         case "APP_VER":
                             app_ver = ((string)SfoParams[i]).Replace(".", "");
@@ -1557,11 +1576,11 @@ namespace libgp4 { // ver 1.26.100
                         case "TITLE_ID":
                             title_id = ((string)SfoParams[i]);
                             continue;
+#if DEBUG
                         case "TITLE":
                             AppTitle = ((string)SfoParams[i]);
                             continue;
 
-                            /* Might Do Something WIth These Later
                             case "FORMAT":
                             case "PARENTAL_LEVEL":
                             case "PUBTOOLINFO":
@@ -1570,7 +1589,8 @@ namespace libgp4 { // ver 1.26.100
                             case "SYSTEM_VER":
                             case "TARGET_APP_VER":
                             case "TITLE_00":
-                            */
+                            continue;
+#endif
                     }
                 }
             }
@@ -1627,11 +1647,6 @@ namespace libgp4 { // ver 1.26.100
         ///--     Main Application Functions     --\\\
         ///////////////////////\\\\\\\\\\\\\\\\\\\\\\\
         #region Main Application Functions
-
-        /// <summary> //! </summary>
-        private void ParseGP4Variables(string gamedata_folder) {
-
-        }
 
 
         private void VerifyGP4(string gamedata_folder, string playgo_content_id, string content_id, string category, string version, string app_ver) {
@@ -1724,7 +1739,7 @@ namespace libgp4 { // ver 1.26.100
                 filename = filepath.Remove(filepath.LastIndexOf(".")).Substring(filepath.LastIndexOf('\\') + 1); // Tf Am I Doing Here?
 
 
-            foreach(var blacklisted_file_or_folder in project_file_blacklist)
+            foreach(var blacklisted_file_or_folder in DefaultBlacklist)
                 if(filepath.Contains(blacklisted_file_or_folder)) {
 #if DEBUG
                     WLog($"Ignoring: {filepath}");
