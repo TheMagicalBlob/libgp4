@@ -1107,44 +1107,6 @@ namespace libgp4 { // ver 1.26.100
         ///</summary>
         private string[][] extra_files;
 
-        // Collection of Parameters Parsed From The Last of Us Part II, Kept For Testing Purposes
-        private static readonly string[] DEBUG_misc_sfo_variables = new string[] {
-                "APP_TYPE",
-                "APP_VER",
-                "ATTRIBUTE",
-                "ATTRIBUTE2",
-                "CATEGORY",
-                "CONTENT_ID",
-                "DEV_FLAG",
-                "DOWNLOAD_DATA_SIZE",
-                "FORMAT",
-                "PARENTAL_LEVEL",
-                "PUBTOOLINFO",
-                "PUBTOOLMINVER",
-                "PUBTOOLVER",
-                "REMOTE_PLAY_KEY_ASSIGN",
-                "SERVICE_ID_ADDCONT_ADD_1",
-                "SERVICE_ID_ADDCONT_ADD_2",
-                "SERVICE_ID_ADDCONT_ADD_3",
-                "SERVICE_ID_ADDCONT_ADD_4",
-                "SERVICE_ID_ADDCONT_ADD_5",
-                "SERVICE_ID_ADDCONT_ADD_6",
-                "SERVICE_ID_ADDCONT_ADD_7",
-                "SYSTEM_VER",
-                "TARGET_APP_VER",
-                "TITLE",
-                "TITLE_00",
-                "TITLE_03",
-                "TITLE_05",
-                "TITLE_07",
-                "TITLE_08",
-                "TITLE_17",
-                "TITLE_20",
-                "TITLE_ID",
-                "USER_DEFINED_PARAM_1",
-                "VERSION"
-        };
-
 
         /// <summary>
         /// Output Log Messages To A Custom Output Method (GP4Creator.LoggingMethod(string)), And/Or To The Console If Applicable.<br/><br/>
@@ -1237,6 +1199,11 @@ namespace libgp4 { // ver 1.26.100
         /// The Application's Default Name, Read From The param.sfo In The Provided Gamedata Folder.
         /// </summary>
         public string AppTitle { get; private set; }
+
+        /// <summary>
+        /// The Various Titles Of The Application, If There Are Titles Passed The Default (e.g. Title_XX). Left null Otherwise.
+        /// </summary>
+        public List<string> AppTitles { get; private set; }
 
         /// <summary>
         /// The Application's Intended Package Type.
@@ -1556,6 +1523,46 @@ namespace libgp4 { // ver 1.26.100
                     }
                 }
 
+#if DEBUG
+                // Collection of Parameters Parsed From The Last of Us Part II, Kept For Testing Purposes
+                string[] DEBUG_misc_sfo_variables = new string[] {
+                        "APP_TYPE",
+                        "APP_VER",
+                        "ATTRIBUTE",
+                        "ATTRIBUTE2",
+                        "CATEGORY",
+                        "CONTENT_ID",
+                        "DEV_FLAG",
+                        "DOWNLOAD_DATA_SIZE",
+                        "FORMAT",
+                        "PARENTAL_LEVEL",
+                        "PUBTOOLINFO",
+                        "PUBTOOLMINVER",
+                        "PUBTOOLVER",
+                        "REMOTE_PLAY_KEY_ASSIGN",
+                        "SERVICE_ID_ADDCONT_ADD_1",
+                        "SERVICE_ID_ADDCONT_ADD_2",
+                        "SERVICE_ID_ADDCONT_ADD_3",
+                        "SERVICE_ID_ADDCONT_ADD_4",
+                        "SERVICE_ID_ADDCONT_ADD_5",
+                        "SERVICE_ID_ADDCONT_ADD_6",
+                        "SERVICE_ID_ADDCONT_ADD_7",
+                        "SYSTEM_VER",
+                        "TARGET_APP_VER",
+                        "TITLE",
+                        "TITLE_00",
+                        "TITLE_03",
+                        "TITLE_05",
+                        "TITLE_07",
+                        "TITLE_08",
+                        "TITLE_17",
+                        "TITLE_20",
+                        "TITLE_ID",
+                        "USER_DEFINED_PARAM_1",
+                        "VERSION"
+                };
+#endif
+
                 for(int i = 0; i < SfoParamLabels.Length; i++) {
                     switch(SfoParamLabels[i]) {
                         case "APP_TYPE":
@@ -1581,14 +1588,18 @@ namespace libgp4 { // ver 1.26.100
                             AppTitle = ((string)SfoParams[i]);
                             continue;
 
-                            case "FORMAT":
-                            case "PARENTAL_LEVEL":
-                            case "PUBTOOLINFO":
-                            case "PUBTOOLMINVER":
-                            case "PUBTOOLVER":
-                            case "SYSTEM_VER":
-                            case "TARGET_APP_VER":
-                            case "TITLE_00":
+                        default:
+                            if(SfoParamLabels[i].Contains("Title_"))
+                                AppTitles.Add((string)SfoParams[i]);
+                            continue;
+
+                        case "FORMAT":
+                        case "PARENTAL_LEVEL":
+                        case "PUBTOOLINFO":
+                        case "PUBTOOLMINVER":
+                        case "PUBTOOLVER":
+                        case "SYSTEM_VER":
+                        case "TARGET_APP_VER":
                             continue;
 #endif
                     }
