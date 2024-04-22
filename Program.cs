@@ -1161,9 +1161,6 @@ namespace libgp4 { // ver 1.26.100
         /// (False By Default)
         /// </summary>
         public bool Keystone;
-
-        /// <summary> Limit GP4 Log Verbosity. </summary>
-        public int VerboseLogging; // UNIMPLEMENTED
         
         /// <summary>
         /// The 32-bit Key Used To Encrypt The .pkg. Required For Extraction With orbis-pub-chk. <br/>
@@ -1192,9 +1189,10 @@ namespace libgp4 { // ver 1.26.100
         /// </summary>
         public Action<object> LoggingMethod = null;
 
+        /// <summary> UNIMPLEMENTED | Limit GP4 Log Verbosity. </summary>
+        public int LogVerbosity; // UNIMPLEMENTED
 
 #if DEBUG
-        
         /// <summary>
         /// The Application's Default Name, Read From The param.sfo In The Provided Gamedata Folder.
         /// </summary>
@@ -1209,7 +1207,6 @@ namespace libgp4 { // ver 1.26.100
         /// The Application's Intended Package Type.
         /// </summary>
         public int AppType { get; private set; }
-
 #endif
         #endregion
 
@@ -1563,11 +1560,8 @@ namespace libgp4 { // ver 1.26.100
                 };
 #endif
 
-                for(int i = 0; i < SfoParamLabels.Length; i++) {
+                for(int i = 0; i < SfoParamLabels.Length; i++)
                     switch(SfoParamLabels[i]) {
-                        case "APP_TYPE":
-                            AppType = (int)SfoParams[i];
-                            continue;
                         case "APP_VER":
                             app_ver = ((string)SfoParams[i]).Replace(".", "");
                             continue;
@@ -1584,6 +1578,10 @@ namespace libgp4 { // ver 1.26.100
                             title_id = ((string)SfoParams[i]);
                             continue;
 #if DEBUG
+                        case "APP_TYPE":
+                            AppType = (int)SfoParams[i];
+                            continue;
+
                         case "TITLE":
                             AppTitle = ((string)SfoParams[i]);
                             continue;
@@ -1603,7 +1601,11 @@ namespace libgp4 { // ver 1.26.100
                             continue;
 #endif
                     }
-                }
+
+#if DEBUG
+                if(AppTitles.Count > 0) //!
+                    AppTitles.Prepend(AppTitle);
+#endif
             }
 
 

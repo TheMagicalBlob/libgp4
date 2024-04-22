@@ -2,7 +2,6 @@
 using System;
 using System.IO;
 using System.Xml;
-using static System.Net.WebRequestMethods;
 
 namespace libgp4 {
     public partial class GP4Creator {
@@ -82,22 +81,22 @@ namespace libgp4 {
             }
 
             if (extra_files != null)
-            for(var index = 0; index < extra_files.Length; index++) {
-                if(FileShouldBeExcluded(extra_files[index][1]))
-                    continue;
+                for(var index = 0; index < extra_files.Length; index++) {
+                    if(FileShouldBeExcluded(extra_files[index][1]))
+                        continue;
 
-                var file = gp4.CreateElement("file");
-                file.SetAttribute("targ_path", (extra_files[index][0].Replace(gamedata_folder + "\\", string.Empty)).Replace('\\', '/'));
-                file.SetAttribute("orig_path", extra_files[index][1]);
+                    var file = gp4.CreateElement("file");
+                    file.SetAttribute("targ_path", (extra_files[index][0].Replace(gamedata_folder + "\\", string.Empty)).Replace('\\', '/'));
+                    file.SetAttribute("orig_path", extra_files[index][1]);
 
-                if(!SkipPfsCompressionForFile(extra_files[index][1]))
-                    file.SetAttribute("pfs_compression", "enable");
+                    if(!SkipPfsCompressionForFile(extra_files[index][1]))
+                        file.SetAttribute("pfs_compression", "enable");
 
-                if(!SkipChunkAttributeForFile(extra_files[index][1]) && chunk_count - 1 != 0)
-                    file.SetAttribute("chunks", $"0-{chunk_count - 1}");
+                    if(!SkipChunkAttributeForFile(extra_files[index][1]) && chunk_count - 1 != 0)
+                        file.SetAttribute("chunks", $"0-{chunk_count - 1}");
 
-                files.AppendChild(file);
-            }
+                    files.AppendChild(file);
+                }
 
             return files;
         }
