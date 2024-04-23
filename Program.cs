@@ -795,10 +795,16 @@ namespace libgp4 { // ver 1.26.100
 
 
             // Check File List To Ensure No Files That Should Be Excluded Have Been Added To The .gp4
+            var i = 0;
+            var Base = $" Invalid File(s) Included In .gp4 Project:\n";
             foreach(var file in Files)
-                if(project_file_blacklist.Contains(file))
-                    Errors += $"Invalid File Included In .gp4 Project: {file}\n\n";
+                if(project_file_blacklist.Contains(file)) {
+                    Base += $"{file}\n";
+                    ++i;
+                }
 
+            if(i != 0)
+                Errors += i + $"{Base}\n";
 
 
 
