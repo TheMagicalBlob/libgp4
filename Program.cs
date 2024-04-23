@@ -31,17 +31,16 @@ namespace libgp4 { // ver 1.26.100
         ///  Then Parses The Given Project File For All Relevant .gp4 Data. Also Checks For Possible Errors.
         /// </summary>
         /// <param name="GP4Path"> The Absolute Path To The .gp4 Project File </param>
-        /// <param name="AssertOnErrorFound">
-        /// Determines Whether Or Not Assertions Are Thrown When Errors Are Found In The .gp4 File,<br/>
+        /// <param name="EnableAssertions">
+        /// Determines Whether Or Not To Throw An Assertion If An Error Is Found In The .gp4 File,<br/>
         /// Or Only When The Integrity Is Checked Through VerifyGP4Integrity()
         /// </param>
-        public GP4Reader(string GP4Path, bool AssertOnErrorFound = false) {
+        public GP4Reader(string GP4Path) {
             using(var gp4_file = new StreamReader(GP4Path)) {
                 gp4_file.ReadLine();                  // Skip First Line To Avoid A Version Conflict
                 ParseGP4(XmlReader.Create(gp4_file)); // Read All Data Someone Might Want To Grab From The .gp4 For Whatevr Reason
                 
                 gp4_path = GP4Path;
-                assert_on_error_found = AssertOnErrorFound;
             }
         }
         
@@ -95,6 +94,31 @@ namespace libgp4 { // ver 1.26.100
         }
 
 
+        /// <summary> Console Logging Method. </summary>
+        private static void DLog(object o) {
+
+            if(enable_output_channel[0])
+                try { Debug.WriteLine("#libgp4.dll: " + o); }
+                catch(Exception) { enable_output_channel[0] = false; }
+
+            if(!Console.IsOutputRedirected && enable_output_channel[1]) // Avoid Duplicate Writes
+                try { Console.WriteLine("#libgp4.dll: " + o); }
+                catch(Exception) { enable_output_channel[1] = false; }
+        }
+
+        /// <summary> Error Logging Method. </summary>
+        private static void ELog(string NodeName, string Error) {
+            var Message = (assertion_message.Replace("$|$", NodeName)).Replace("%|%", Error);
+
+            try { Debug.WriteLine("libgp4.dll: " + Message); }
+            catch(Exception) { enable_output_channel[0] = false; }
+
+            if(!Console.IsOutputRedirected) // Avoid Duplicate Writes
+                try { Console.WriteLine("libgp4.dll: " + Message); }
+                catch(Exception) { enable_output_channel[1] = false; }
+        }
+
+
         ////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\
         ///--     Internal Variables / Methods     --\\\
         ////////////////////////\\\\\\\\\\\\\\\\\\\\\\\\
@@ -137,44 +161,15 @@ namespace libgp4 { // ver 1.26.100
         ///</summary>
         private static readonly bool[] enable_output_channel = new bool[] { true, true };
 
-        /// <summary>
-        /// Determines Whether Or Not Assertions Are Thrown When Errors Are Found In The .gp4 File,<br/>
-        /// Or Only When The Integrity Is Checked Through VerifyGP4Integrity().
-        /// </summary>
-        private static bool assert_on_error_found;
-
         /// <summary> Backup Of The GP4's File Path For Various Methods
         ///</summary>
         private readonly string gp4_path;
 
-        /// <summary> The Content Id In The Named File. (Read Both For Redundancy To Hopefully Catch A Mismatched Id)
+        /// <summary> The Content Id In The Named File. (Redundancy To Hopefully Catch A Mismatched Id)
         ///</summary>
         private string sfo_content_id, playgo_content_id;
 
 
-        /// <summary> Console Logging Method. </summary>
-        private static void DLog(object o) {
-
-            if(enable_output_channel[0])
-            try { Debug.WriteLine("#libgp4.dll: " + o); }
-            catch(Exception) { enable_output_channel[0] = false; }
-
-            if(!Console.IsOutputRedirected && enable_output_channel[1]) // Avoid Duplicate Writes
-            try { Console.WriteLine("#libgp4.dll: " + o); }
-            catch(Exception) { enable_output_channel[1] = false; }
-        }
-
-        /// <summary> Error Logging Method. </summary>
-        private static void ELog(string NodeName, string Error) {
-            var Message = (assertion_message.Replace("$|$", NodeName)).Replace("%|%", Error);
-
-            try { Debug.WriteLine("libgp4.dll: " + Message); }
-            catch(Exception) { enable_output_channel[0] = false; }
-
-            if(!Console.IsOutputRedirected) // Avoid Duplicate Writes
-            try { Console.WriteLine("libgp4.dll: " + Message); }
-                catch(Exception) { enable_output_channel[1] = false; }
-        }
 
 
 
@@ -191,18 +186,19 @@ namespace libgp4 { // ver 1.26.100
         /// The GP4Path, Either Unmodified If Valid On It's Own, Or With The Current Directory Prepended If It's A Valid Relative Path.<br/>
         /// string.Empty Otherwise
         /// </returns>
-        private static string VerifyGP4Path(string GP4Path) {
-            if(!File.Exists(GP4Path)) // Absolute And Second Relative Path Checks || (In Case The User Excluded The First Backslash, idfk Why)
+        private static string CheckGP4Path(string GP4Path) {
+
+            // Absolute And Second Relative Path Checks || (In Case The User Excluded The First Backslash, idfk Why)
+            if(!File.Exists(GP4Path))
 
                 // Bad Path
                 if(!File.Exists($@"{Directory.GetCurrentDirectory()}\{GP4Path}"))
-                    if (assert_on_error_found)
-                        throw new FileNotFoundException($"Invalid .gp4 Path Given, Please Provide A Valid Absolute Or Relative Path To A .gp4 Project File.\n(Given Path: {GP4Path})");
-                    else return string.Empty;
+                        DLog($"Invalid .gp4 Path Given, Please Provide A Valid Absolute Or Relative Path To A .gp4 Project File.\n(Given Path: {GP4Path})");
 
                 // Relative Path Checks Out
                 else return $@"{Directory.GetCurrentDirectory()}\{GP4Path}";
 
+            // Path Good As-Is
             return GP4Path;
         }
 
@@ -215,7 +211,7 @@ namespace libgp4 { // ver 1.26.100
         /// <returns> The Value Of The Specified Attribute If Successfully Found; string.Empty Otherwise.
         ///</returns>
         private static string GetAttribute(string GP4Path, string NodeName, string AttributeName) {
-            if((GP4Path = VerifyGP4Path(GP4Path)) != string.Empty)
+            if((GP4Path = CheckGP4Path(GP4Path)) != string.Empty)
                 using(StreamReader GP4File = new StreamReader(GP4Path)) {
                     string Out;
                     
@@ -241,7 +237,7 @@ namespace libgp4 { // ver 1.26.100
         /// <returns> A String Array Containing The Value Of Each Instance Of AttributeName, Or An Empty String Array Otherwise.
         ///</returns>
         private static string[] GetAttributes(string GP4Path, string NodeName, string AttributeName) {
-            if((GP4Path = VerifyGP4Path(GP4Path)) != string.Empty)
+            if((GP4Path = CheckGP4Path(GP4Path)) != string.Empty)
                 using(StreamReader GP4File = new StreamReader(GP4Path)) {
                     var Out = new List<string>();
                     string tmp;
@@ -270,7 +266,7 @@ namespace libgp4 { // ver 1.26.100
         /// <returns> The Inner Xml Data Of the Given Node If It's Successfully Found; string.Empty Otherwise.
         ///</returns>
         private static string GetInnerXMLData(string GP4Path, string NodeName) {
-            if ((GP4Path = VerifyGP4Path(GP4Path)) != string.Empty)
+            if ((GP4Path = CheckGP4Path(GP4Path)) != string.Empty)
                 using(StreamReader GP4File = new StreamReader(GP4Path)) {
                     GP4File.ReadLine(); // Skip Version Confilct
 
@@ -362,13 +358,9 @@ namespace libgp4 { // ver 1.26.100
                             app_type = gp4.GetAttribute("app_type");
 
                             // Check .gp4 Integrity
-                            if(Passcode.Length < 32) {
-                                var Error = $"Passcode Length Was Less Than 32 Characters.";
+                            if(Passcode.Length < 32)
+                                ELog(gp4.LocalName, $"Passcode Length Was Less Than 32 Characters.");
 
-                                ELog(gp4.LocalName, Error);
-                                if(assert_on_error_found)
-                                    throw new InvalidDataException(Error);
-                            }
                             break;
                         }
 
@@ -379,13 +371,9 @@ namespace libgp4 { // ver 1.26.100
                             ChunkCount = int.Parse(gp4.GetAttribute("chunk_count"));
 
                             // Check .gp4 Integrity
-                            if(ScenarioCount == 0 || ChunkCount == 0) {
-                                var Error = $"Scenario And/Or Chunk Counts Were 0 (Scnarios: {ScenarioCount}, Chunks: {ChunkCount})";
+                            if(ScenarioCount == 0 || ChunkCount == 0)
+                                ELog(gp4.LocalName, $"Scenario And/Or Chunk Counts Were 0 (Scnarios: {ScenarioCount}, Chunks: {ChunkCount})");
 
-                                ELog(gp4.LocalName, Error);
-                                if(assert_on_error_found)
-                                    throw new InvalidDataException(Error);
-                            }
                             break;
                         }
 
@@ -411,14 +399,8 @@ namespace libgp4 { // ver 1.26.100
                             }
 
                             // Check .gp4 Integrity
-                            if(Indexing != ChunkCount) {
-                                var Error = $"ERORR: \"chunk_count\" Attribute Did Not Match Amount Of Chunk Nodes ({Indexing} != {ChunkCount})";
-
-                                ELog(gp4.LocalName, Error);
-                                if(assert_on_error_found)
-                                    throw new InvalidDataException(Error);
-                            }
-
+                            if(Indexing != ChunkCount)
+                                ELog(gp4.LocalName, $"ERORR: \"chunk_count\" Attribute Did Not Match Amount Of Chunk Nodes ({Indexing} != {ChunkCount})");
 
                             this.Chunks = Chunks.ToArray();
                             break;
@@ -447,13 +429,8 @@ namespace libgp4 { // ver 1.26.100
                             }
 
                             // Check .gp4 Integrity
-                            if(Indexing != ScenarioCount) {
-                                var Error = $"\"scenario_count\" Attribute Did Not Match Amount Of Scenario Nodes ({Indexing} != {ScenarioCount})";
-
-                                ELog(gp4.LocalName, Error);
-                                if(assert_on_error_found)
-                                    throw new InvalidDataException(Error);
-                            }
+                            if(Indexing != ScenarioCount)
+                                ELog(gp4.LocalName, $"\"scenario_count\" Attribute Did Not Match Amount Of Scenario Nodes ({Indexing} != {ScenarioCount})");
 
                             this.Scenarios = Scenarios.ToArray();
                             break;
@@ -486,7 +463,7 @@ namespace libgp4 { // ver 1.26.100
                                 }
                             }
 
-                            // *
+                            // Print Any Invalid File Paths
                             if(Indexing > 0) {
                                 var Error = $"Invalid File{(Indexing > 1 ? "s " : " ")}In .gp4 Project: {InvalidFiles}";
 
@@ -630,7 +607,7 @@ namespace libgp4 { // ver 1.26.100
         /// <summary> Check Various Parts Of The .gp4 To Try And Find Any Possible Errors In The Project File.
         ///</summary>
         /// <returns> False If Nothing's Wrong. Throws An InvalidDataException If The Class Was Initialized With Assertions Enabled. True Otherwise. </returns>
-        public bool CheckGP4Integrity() { //! FINISH ME
+        public void CheckGP4Integrity() { //! FINISH ME
             var Errors = string.Empty;
 
 
@@ -644,14 +621,23 @@ namespace libgp4 { // ver 1.26.100
                 Errors += $"Invalid volume_id Attribute in .gp4, Should Be PS4VOLUME. (Read: {volume_id})\n\n";
 
 
-            // Check For Invalid Volume Type Data
-            if(volume_type != "pkg_ps4_app" && volume_type != "pkg_ps4_patch")
-                Errors += $"Invalid Volume Type:\n ({volume_type})\n\n";
 
-            
-            // Check For Conflicting Volume Type Crap
-            if(BaseAppPkgPath == string.Empty && IsPatchProject)
-                Errors += "Conflicting Volume Type Data For PS4 Package.\n(Base .pkg Path Not Found In .gp4 Project, But The Volume Type Was Patch Package)\n\n";
+            //======================================\\
+            //| Check For Invalid Volume Type Data |\\
+            //======================================\\
+            {
+                if(volume_type != "pkg_ps4_app" && volume_type != "pkg_ps4_patch")
+                    Errors += $"Invalid Volume Type:\n ({volume_type})\n\n";
+
+                if(IsPatchProject && volume_type != "pkg_ps4_patch")
+                    Errors += $"Unexpacted Volume Type For PS4 Patch Package: {volume_type}";
+
+                else if(!IsPatchProject && volume_type != "pkg_ps4_app")
+                    Errors += $"Unexpacted Volume Type For PS4 App Package: {volume_type}";
+
+                if(BaseAppPkgPath == string.Empty && IsPatchProject)
+                    Errors += "Conflicting Volume Type Data For PS4 Package.\n(Base .pkg Path Not Found In .gp4 Project, But The Volume Type Was Patch Package)\n\n";
+            }
 
 
 
@@ -659,19 +645,94 @@ namespace libgp4 { // ver 1.26.100
             //| Check "package" Node Attributes |\\
             //===================================\\
             {
-                if(!LazyContentIdCheck())
-                    Errors += $"Content Id Mismatch In Project.\n .gp4{ContentID}\n .dat{playgo_content_id}\n .sfo: {sfo_content_id}\n\n";
-                
+
                 if((!IsPatchProject && storage_type != "digital50") || (IsPatchProject && storage_type != "digital25"))
                     Errors +=
-                      $"Unexpected Storage Type For {(IsPatchProject ? "Patch" : "Full Game")} Package\n" +
-                      $"(Expected: {(IsPatchProject ? "digital25" : "digital50")}\nRead: {storage_type})\n\n";
+                        $"Unexpected Storage Type For {(IsPatchProject ? "Patch" : "Full Game")} Package\n" +
+                        $"(Expected: {(IsPatchProject ? "digital25" : "digital50")}\nRead: {storage_type})\n\n";
 
                 if(app_type != "full")
                     Errors += $"Invalid Application Type In .gp4 Project\n(Expected: full\nRead: {app_type})\n\n";
 
                 if(Passcode.Length != 32)
                     Errors += $"Incorrect Passcode Length, Must Be 32 Characters (Actual Length: {Passcode.Length})\n\n";
+
+                
+                #region Lazy Content Id Chwck
+                var buff = new byte[36];
+                string[] arr;
+                string p1 = string.Empty, p2;
+                StringBuilder Builder;
+                int ind, byteIndex = 0;
+
+                foreach(var file in Files)
+                    if(file.Contains("param.sfo"))
+                        p1 = file;
+
+                if(p1 == "")
+                    Errors += $"Param.sfo File Not Found In .gp4 File Listing (Mandatory For Package Creation)";
+
+                else if(File.Exists(p1)) {
+                    using(var sfo = File.OpenRead(p1)) {
+                        buff = new byte[4];
+                        sfo.Position = 0x8;
+                        sfo.Read(buff, 0, 4);
+                        var i0 = BitConverter.ToInt32(buff, 0);
+                        sfo.Position = 0x0C;
+                        sfo.Read(buff, 0, 4);
+                        var i1 = BitConverter.ToInt32(buff, 0);
+                        sfo.Position = 0x10;
+                        sfo.Read(buff, 0, 4);
+                        var i2 = BitConverter.ToInt32(buff, 0);
+                        arr = new string[i2];
+                        var iA = new int[i2];
+                        buff = new byte[i1 - i0];
+                        sfo.Position = i0;
+                        sfo.Read(buff, 0, buff.Length);
+
+                        for(ind = 0; ind < arr.Length; ind++) {
+                            Builder = new StringBuilder();
+
+                            while(buff[byteIndex] != 0)
+                                Builder.Append(Encoding.UTF8.GetString(new byte[] { buff[byteIndex++] })); // Just Take A Byte, You Fussy Prick
+
+                            byteIndex++;
+                            arr[ind] = Builder.ToString();
+                        }
+
+                        sfo.Position = 0x20;
+                        buff = new byte[4];
+                        for(ind = 0; ind < i2; sfo.Position += 0x10 - buff.Length) {
+                            sfo.Read(buff, 0, 4);
+                            iA[ind] = i1 + BitConverter.ToInt32(buff, 0);
+                            ind++;
+                        }
+
+                        for(ind = 0; ind < i2; ind++) {
+                            if(arr[ind] != "CONTENT_ID")
+                                continue;
+
+                            buff = new byte[36];
+                            sfo.Position = iA[ind];
+                            sfo.Read(buff, 0, 36);
+
+                            sfo_content_id = Encoding.UTF8.GetString(buff);
+                        }
+                    }
+
+
+                    if(File.Exists(p2 = $"{p1.Remove(p1.LastIndexOf('\\') + 1)}playgo-chunk.dat")) {
+                        using(var playgo = File.OpenRead(p2)) {
+                            playgo.Position = 0x40;
+                            playgo.Read(buff, 0, 36);
+                            playgo_content_id = Encoding.UTF8.GetString(buff);
+                        }
+
+                        if(ContentID == playgo_content_id && playgo_content_id == sfo_content_id) // Check For Mismatched Content Id's
+                            Errors += $"Content Id Mismatch In .gp4 Project.\n{ContentID}\n .dat{playgo_content_id}\n .sfo: {sfo_content_id}\n\n";
+                    }
+                }
+                #endregion
             }
             //|===============================================================================================================================|\\
 
@@ -694,31 +755,39 @@ namespace libgp4 { // ver 1.26.100
                 if(Scenarios.Length != ScenarioCount)
                     Errors += "Number Of Scenarios Listed In .gp4 Project Doesn't Match ScenarioCount Attribute\n\n";
 
+                // Check .gp4 Integrity
+                if(ScenarioCount == 0 || ChunkCount == 0)
+                    Errors += $"Scenario And/Or Chunk Counts Were 0 (Scnarios: {ScenarioCount}, Chunks: {ChunkCount})\n\n";
 
                 // Check Scenarios
-                int i = 1;
-                foreach(var Sc in Scenarios) {
-                    if(Sc.Id > Scenarios.Length - 1)
-                        Errors += $"Scenario Id Was Out Of Bounds In Scenario #{i} ({DefaultScenarioId} > {Scenarios.Length - 1})\n\n";
+                if(Scenarios == null) {
+                    Errors += "Application Was Missing Scenario Elements. (GP4Reader.Scenarios Was Null)";
+                }
+                else {
+                    int i = 1;
+                    foreach(var Sc in Scenarios) {
+                        if(Sc.Id > Scenarios.Length - 1)
+                            Errors += $"Scenario Id Was Out Of Bounds In Scenario #{i} ({DefaultScenarioId} > {Scenarios.Length - 1})\n\n";
 
-                    if(Sc.Type != "mp" && Sc.Type != "sp")
-                        Errors += $"Unexpected Scenario Type For Scenario #{i}\n(Expected: sp || mp\nRead: {Sc.Type})\n\n";
+                        if(Sc.Type != "mp" && Sc.Type != "sp")
+                            Errors += $"Unexpected Scenario Type For Scenario #{i}\n(Expected: sp || mp\nRead: {Sc.Type})\n\n";
 
-                    if(Sc.InitialChunkCount > Chunks.Length)
-                        Errors += $"Initial Chunk Count For Scenario #{i} Was Larger Than The Actual Chunk Count {Sc.InitialChunkCount} > {Chunks.Length}\n\n";
+                        if(Sc.InitialChunkCount > Chunks.Length)
+                            Errors += $"Initial Chunk Count For Scenario #{i} Was Larger Than The Actual Chunk Count {Sc.InitialChunkCount} > {Chunks.Length}\n\n";
 
-                    if(Sc.Label == "")
-                        Errors += $"Empty Scenario Label In Scenario #{i}\n\n";
+                        if(Sc.Label == "")
+                            Errors += $"Empty Scenario Label In Scenario #{i}\n\n";
 
-                    var RangeChk = int.Parse(Sc.ChunkRange.Substring(Sc.ChunkRange.LastIndexOf('-')+1));
-                    if(RangeChk >= ChunkCount)
-                        Errors += $"Invalid Maximum Value For Chunk Range In Scenario #{i}\n ({RangeChk} >= {ChunkCount})\n\n";
+                        var RangeChk = int.Parse(Sc.ChunkRange.Substring(Sc.ChunkRange.LastIndexOf('-') + 1));
+                        if(RangeChk >= ChunkCount)
+                            Errors += $"Invalid Maximum Value For Chunk Range In Scenario #{i}\n ({RangeChk} >= {ChunkCount})\n\n";
 
-                    RangeChk = int.Parse(Sc.ChunkRange.Remove(Sc.ChunkRange.LastIndexOf('-')));
-                    if(RangeChk >= ChunkCount)
-                        Errors += $"Invalid Minimum Value For Chunk Range In Scenario #{i}\n ({RangeChk} >= {ChunkCount})\n\n";
+                        RangeChk = int.Parse(Sc.ChunkRange.Remove(Sc.ChunkRange.LastIndexOf('-')));
+                        if(RangeChk >= ChunkCount)
+                            Errors += $"Invalid Minimum Value For Chunk Range In Scenario #{i}\n ({RangeChk} >= {ChunkCount})\n\n";
 
-                    i++;
+                        i++;
+                    }
                 }
             }
             //|===============================================================================================================================|\\
@@ -737,7 +806,7 @@ namespace libgp4 { // ver 1.26.100
             //| No Errors Were Detected |\\
             //===========================\\
             if(Errors == string.Empty) {
-                return false;
+                return;
             }
 
 
@@ -757,10 +826,7 @@ namespace libgp4 { // ver 1.26.100
 
             DLog(Message);
             
-            if(assert_on_error_found)
-                throw new InvalidDataException(Message);
-
-            return true;
+            throw new InvalidDataException(Message);
         }
         #endregion
 
@@ -936,100 +1002,13 @@ namespace libgp4 { // ver 1.26.100
         }
 
 
-        /// <summary>
-        /// Does What It Says On The Tin. (Lazily Copied And Stripped GP4Creator Code)<br/>
-        /// Extra Line
-        /// </summary>
-        /// <returns> True If The Content Ids In The .gp4 Project File, playgo-chunks.dat, and param.sfo Match </returns>
-        private bool LazyContentIdCheck() {
-            var buff = new byte[36];
-            string[] arr;
-            string p1 = string.Empty, p2;
-            StringBuilder Builder;
-            int ind, byteIndex = 0;
-
-            foreach(var file in Files)
-                if(file.Contains("param.sfo"))
-                    p1 = file;
-
-            if(p1 == "") {
-                DLog($"Param.sfo File Not Found In .gp4 File Listing");
-                sfo_content_id = "MissingFromGp4File";
-                goto JMP;
-            }
-
-            if(File.Exists(p1))
-                using(var sfo = File.OpenRead(p1)) {
-                    buff = new byte[4];
-                    sfo.Position = 0x8;
-                    sfo.Read(buff, 0, 4);
-                    var i0 = BitConverter.ToInt32(buff, 0);
-                    sfo.Position = 0x0C;
-                    sfo.Read(buff, 0, 4);
-                    var i1 = BitConverter.ToInt32(buff, 0);
-                    sfo.Position = 0x10;
-                    sfo.Read(buff, 0, 4);
-                    var i2 = BitConverter.ToInt32(buff, 0);
-                    arr = new string[i2];
-                    var iA = new int[i2];
-                    buff = new byte[i1 - i0];
-                    sfo.Position = i0;
-                    sfo.Read(buff, 0, buff.Length);
-
-                    for(ind = 0; ind < arr.Length; ind++) {
-                        Builder = new StringBuilder();
-
-                        while(buff[byteIndex] != 0)
-                            Builder.Append(Encoding.UTF8.GetString(new byte[] { buff[byteIndex++] })); // Just Take A Byte, You Fussy Prick
-
-                        byteIndex++;
-                        arr[ind] = Builder.ToString();
-                    }
-
-                    sfo.Position = 0x20;
-                    buff = new byte[4];
-                    for(ind = 0; ind < i2; sfo.Position += 0x10 - buff.Length) {
-                        sfo.Read(buff, 0, 4);
-                        iA[ind] = i1 + BitConverter.ToInt32(buff, 0);
-                        ind++;
-                    }
-
-                    for(ind = 0; ind < i2; ind++) {
-                        if(arr[ind] != "CONTENT_ID")
-                            continue;
-
-                        buff = new byte[36];
-                        sfo.Position = iA[ind];
-                        sfo.Read(buff, 0, 36);
-
-                        sfo_content_id = Encoding.UTF8.GetString(buff);
-                    }
-                }
-
-            else
-                sfo_content_id = "FileNotPresent";
-
-
-            JMP:
-            if (File.Exists(p2 = $"{p1.Remove(p1.LastIndexOf('\\') + 1)}playgo-chunk.dat"))
-                using(var playgo = File.OpenRead(p2)) {
-                    playgo.Position = 0x40;
-                    playgo.Read(buff, 0, 36);
-                    playgo_content_id = Encoding.UTF8.GetString(buff);
-                }
-            else
-                playgo_content_id = "FileNotPresent";
-
-
-            return (ContentID == playgo_content_id && playgo_content_id == sfo_content_id);
-        }
 
         /// <summary> Check Various Parts Of The .gp4 To Try And Find Any Possible Errors In The Project File.
         ///</summary>
         /// <returns> False If Nothing's Wrong. </returns>
-        public static bool CheckGP4Integrity(string GP4Path) {
+        public static void CheckGP4Integrity(string GP4Path) {
             //! Replace With Stripped Parse To Avoid Reading Unnecessary Data
-            return new GP4Reader(GP4Path).CheckGP4Integrity();
+            new GP4Reader(GP4Path).CheckGP4Integrity();
         }
         #endregion
     }
