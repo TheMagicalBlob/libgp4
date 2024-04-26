@@ -108,7 +108,7 @@ namespace libgp4 { // ver 1.26.100
 
         /// <summary> Error Logging Method. </summary>
         private static void ELog(string NodeName, string Error) {
-            var Message = (assertion_message.Replace("$|$", NodeName)).Replace("%|%", Error);
+            var Message = (assertion_base.Replace("$|$", NodeName)).Replace("%|%", Error);
 
             try { Debug.WriteLine("libgp4.dll: " + Message); }
             catch(Exception) { enable_output_channel[0] = false; }
@@ -155,7 +155,7 @@ namespace libgp4 { // ver 1.26.100
         };
 
         /// <summary> Default Assertion Message Text For Formatting. </summary>
-        private static readonly string assertion_message = $"An Error Occured When Reading Attribute From The Following Node: $|$\nMessage: %|%";
+        private static readonly string assertion_base = $"An Error Occured When Reading Attribute From The Following Node: $|$\nMessage: %|%";
 
         /// <summary> Catch DLog Errors, Disabling Whichever Output Threw The Error.
         ///</summary>
@@ -1034,10 +1034,6 @@ namespace libgp4 { // ver 1.26.100
         ///</summary>
         private readonly XmlDocument gp4;
 
-        /// <summary>
-        /// 
-        /// </summary>
-        private static readonly string assertion_message = $"An Error Occured When Reading Attribute From The Following Node: $|$\nMessage: %|%";
 
         /// <summary> Root Gamedata Directory To Be Parsed. (Should Contain At Least An Executable And sce_sys Folder)
         ///</summary>
@@ -1082,8 +1078,8 @@ namespace libgp4 { // ver 1.26.100
         /// Output Log Messages To A Custom Output Method (GP4Creator.LoggingMethod(string)), And/Or To The Console If Applicable.<br/><br/>
         /// Duplicates Message To Standard Console Output As Well.
         ///</summary>
-        private void WLog(object o) {
-            if(LoggingMethod != null)
+        private void WLog(object o, int level) {
+            if(LoggingMethod != null && LogVerbosity - level <= 0)
                 LoggingMethod(o as string);
 
 #if DEBUG
@@ -1093,28 +1089,26 @@ namespace libgp4 { // ver 1.26.100
 
         /// <summary> Console Logging Method.
         ///</summary>
-        private void DLog(object o, string i = "#libgp4.dll: ") {
-            #if DEBUG
+        private string DLog(object o, string i = "#libgp4.dll: ") {
+#if DEBUG
             try { Console.WriteLine(i + o); }
             catch(Exception){}
 
             if(!Console.IsOutputRedirected)
                 try { Debug.WriteLine(i + o); }
                 catch(Exception){}
-            #endif
+#endif
+
+            return o as string;
         }
 
         /// <summary> Error Logging Method.
         ///</summary>
-        private void ELog(string NodeName, string Error) {
-            var Message = (assertion_message.Replace("$|$", NodeName)).Replace("%|%", Error);
-
+        private string ELog(string Error) {
             if(LoggingMethod != null)
-                LoggingMethod(Message);
+                LoggingMethod(DLog($"An Error Occured During The .gp4 Creation Process.\nMessage: {Error}"));
 
-#if DEBUG
-            DLog(Message);
-#endif
+            return Error;
         }
         #endregion
 
@@ -1274,7 +1268,8 @@ namespace libgp4 { // ver 1.26.100
             XmlNode[] base_elements;
 
 
-            WLog($"Starting .gp4 Creation. \nPasscode: {Passcode}\nSource .pkg Path: {BaseGamePackage}");
+            WLog($"Starting .gp4 Creation.", 0);
+            WLog($"Passcode: {Passcode}\nSource .pkg Path: {BaseGamePackage}", 1);
 
 
             /* Parse playgo-chunks.dat For Required .gp4 Variables.
@@ -1620,7 +1615,7 @@ namespace libgp4 { // ver 1.26.100
                 gp4.Save(OutputPath);
 
 
-            WLog($"GP4 Creation Successful, File Saved As {OutputPath}");
+            WLog($"GP4 Creation Successful, File Saved As {OutputPath}", 0);
         }
         #endregion
 
@@ -1637,13 +1632,13 @@ namespace libgp4 { // ver 1.26.100
 
             if(!Directory.Exists(gamedata_folder)) {
                 var Error = $"Could Not Find The Provided Game Data Directory.\n\nPath Provided:\n\"{gamedata_folder}\"";
-                WLog(Error);
+                ELog(Error);
                 throw new Exception(Error);
             }
 
             if(playgo_content_id != content_id) {
                 var Error = $"Content ID Mismatch Detected, Process Aborted\n[playgo-chunks.dat: {playgo_content_id} != param.sfo: {content_id}]";
-                WLog(Error);
+                ELog(Error);
                 throw new Exception(Error);
             }
 
@@ -1652,13 +1647,13 @@ namespace libgp4 { // ver 1.26.100
             // Catch Conflicting Project Type Information
             if(category == "gp" && app_ver == "1.00") {
                 var Error = $"Invalid App Version For Patch Package. App Version Must Be Passed 1.00.";
-                WLog(Error);
+                ELog(Error);
                 throw new Exception(Error);
             }
 
             else if(category == "gd" && app_ver != "1.00") {
                 var Error = $"Invalid App Version For Application Package. App Version Was {app_ver}, Must Be 1.00.";
-                WLog(Error);
+                ELog(Error);
                 throw new Exception(Error);
             }
 
@@ -1666,7 +1661,7 @@ namespace libgp4 { // ver 1.26.100
 
             if(Passcode.Length < 32) {
                 var Error = $"Invalid Password Length, Must Be A 32-Character String.";
-                WLog(Error);
+                ELog(Error);
                 throw new Exception(Error);
             }
 
@@ -1674,7 +1669,7 @@ namespace libgp4 { // ver 1.26.100
 
             if(SourcePkgPath != null && SourcePkgPath[SourcePkgPath.Length - 1] == '\\') {
                 var Error = $"Invalid Base Application .pkg Path.\nDirectory \"{SourcePkgPath}\" Was Given.";
-                WLog(Error);
+                ELog(Error);
                 throw new Exception(Error);
             }
 
@@ -1682,7 +1677,7 @@ namespace libgp4 { // ver 1.26.100
 
             if(true && false) {
                 var Error = $"Unimplemented Error Message.";
-                WLog(Error);
+                ELog(Error);
                 throw new Exception(Error);
             }
 
@@ -1725,7 +1720,7 @@ namespace libgp4 { // ver 1.26.100
             foreach(var blacklisted_file_or_folder in DefaultBlacklist)
                 if(filepath.Contains(blacklisted_file_or_folder)) {
 #if DEBUG
-                    WLog($"Ignoring: {filepath}");
+                    WLog($"Ignoring: {filepath}", 2);
 #endif
                     return true;
                 }
@@ -1734,7 +1729,7 @@ namespace libgp4 { // ver 1.26.100
                 foreach(var blacklisted_file_or_folder in BlacklistedFilesOrFolders) {
                     if(filepath.Contains(blacklisted_file_or_folder)) {
 #if DEBUG
-                        WLog($"User Ignoring: {filepath}");
+                        WLog($"User Ignoring: {filepath}", 2);
 #endif
                         return true;
                     }
