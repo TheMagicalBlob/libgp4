@@ -1133,12 +1133,6 @@ namespace libgp4 { // ver 1.26.100
         public string Passcode;
 
         /// <summary>
-        /// Necessary Variable For The Creation Of Patch A .pkg.<br/><br/>
-        /// Path Of The Base Game Pkg You're Going To Install The Created Patch Package To. (Patch Packages Must Be Married To Their Intended Base)
-        /// </summary>
-        public string BaseGamePackage;
-
-        /// <summary>
         /// An Array Containing The Names Of Any Files Or Folders That Are To Be Excluded From The .gp4 Project.
         /// </summary>
         public string[] BlacklistedFilesOrFolders;
@@ -1153,8 +1147,14 @@ namespace libgp4 { // ver 1.26.100
         /// </summary>
         public Action<object> LoggingMethod = null;
 
-        /// <summary> UNIMPLEMENTED | Limit GP4 Log Verbosity. </summary>
-        public int LogVerbosity; // UNIMPLEMENTED
+        /// <summary>
+        /// Limit GP4 Log Verbosity.
+        /// <br/>0: Basic
+        /// <br/>1: Verbose
+        /// <br/>0: Verbose &amp; Debug
+        /// </summary>
+        public int LogVerbosity;
+
 
 #if DEBUG
         /// <summary>
@@ -1268,8 +1268,10 @@ namespace libgp4 { // ver 1.26.100
             XmlNode[] base_elements;
 
 
+            WLog("=====================================================", 2);
             WLog($"Starting .gp4 Creation.", 0);
-            WLog($"Passcode: {Passcode}\nSource .pkg Path: {BaseGamePackage}", 1);
+            WLog($"Passcode: {Passcode}\n.gp4 Output Path: {SourcePkgPath}", 1);
+            WLog($"Item: {null}\nSource .pkg Path: {SourcePkgPath}", 2);
 
 
             /* Parse playgo-chunks.dat For Required .gp4 Variables.
@@ -1616,6 +1618,7 @@ namespace libgp4 { // ver 1.26.100
 
 
             WLog($"GP4 Creation Successful, File Saved As {OutputPath}", 0);
+            WLog("=====================================================", 2);
         }
         #endregion
 
