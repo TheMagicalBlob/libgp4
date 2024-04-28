@@ -1069,6 +1069,48 @@ namespace libgp4 { // ver 1.26.100
                     @"sce_sys\app\playgo-manifest.xml"
         };
 
+
+#if DEBUG
+        // Collection of Parameters Parsed From The Last of Us Part II, Kept For Testing Purposes
+        string[] DEBUG_misc_sfo_variables = new string[] {
+                        "APP_TYPE",
+                        "APP_VER",
+                        "ATTRIBUTE",
+                        "ATTRIBUTE2",
+                        "CATEGORY",
+                        "CONTENT_ID",
+                        "DEV_FLAG",
+                        "DOWNLOAD_DATA_SIZE",
+                        "FORMAT",
+                        "PARENTAL_LEVEL",
+                        "PUBTOOLINFO",
+                        "PUBTOOLMINVER",
+                        "PUBTOOLVER",
+                        "REMOTE_PLAY_KEY_ASSIGN",
+                        "SERVICE_ID_ADDCONT_ADD_1",
+                        "SERVICE_ID_ADDCONT_ADD_2",
+                        "SERVICE_ID_ADDCONT_ADD_3",
+                        "SERVICE_ID_ADDCONT_ADD_4",
+                        "SERVICE_ID_ADDCONT_ADD_5",
+                        "SERVICE_ID_ADDCONT_ADD_6",
+                        "SERVICE_ID_ADDCONT_ADD_7",
+                        "SYSTEM_VER",
+                        "TARGET_APP_VER",
+                        "TITLE",
+                        "TITLE_00",
+                        "TITLE_03",
+                        "TITLE_05",
+                        "TITLE_07",
+                        "TITLE_08",
+                        "TITLE_17",
+                        "TITLE_20",
+                        "TITLE_ID",
+                        "USER_DEFINED_PARAM_1",
+                        "VERSION"
+        };
+#endif
+
+
         /// <summary> List Of Additional Files To Include In The Project, Added by The User.
         ///</summary>
         private string[][] extra_files;
@@ -1081,16 +1123,12 @@ namespace libgp4 { // ver 1.26.100
         private void WLog(object o, int level) {
             if(LoggingMethod != null && LogVerbosity - level <= 0)
                 LoggingMethod(o as string);
-
-#if DEBUG
-            DLog(o, null); // Exclude "#libgp4.dll: " Prefix From Indirect Debug Log Calls
-#endif
         }
 
         /// <summary> Console Logging Method.
         ///</summary>
         private string DLog(object o, string i = "#libgp4.dll: ") {
-#if DEBUG
+#if Log
             try { Console.WriteLine(i + o); }
             catch(Exception){}
 
@@ -1142,6 +1180,8 @@ namespace libgp4 { // ver 1.26.100
         /// </summary>
         public string SourcePkgPath;
 
+
+#if Log
         /// <summary>
         /// Optional Method To Use For Logging. [Function(string s)]
         /// </summary>
@@ -1154,9 +1194,10 @@ namespace libgp4 { // ver 1.26.100
         /// <br/>0: Verbose &amp; Debug
         /// </summary>
         public int LogVerbosity;
+#endif
 
 
-#if DEBUG
+#if GUIExtras
         /// <summary>
         /// The Application's Default Name, Read From The param.sfo In The Provided Gamedata Folder.
         /// </summary>
@@ -1268,11 +1309,15 @@ namespace libgp4 { // ver 1.26.100
             XmlNode[] base_elements;
 
 
+
+            if(Directory.Exists(OutputPath))
+                OutputPath = $@"{OutputPath}\{title_id}-{((category == "gd") ? "app" : "patch")}.gp4";
+
+#if Log
             WLog("=====================================================", 2);
             WLog($"Starting .gp4 Creation.", 0);
-            WLog($"Passcode: {Passcode}\n.gp4 Output Path: {SourcePkgPath}", 1);
-            WLog($"Item: {null}\nSource .pkg Path: {SourcePkgPath}", 2);
-
+            WLog($"PKG Passcode: {Passcode}\nSource .pkg Path: {SourcePkgPath}", 2);
+#endif
 
             /* Parse playgo-chunks.dat For Required .gp4 Variables.
             | ========================= |
@@ -1290,6 +1335,7 @@ namespace libgp4 { // ver 1.26.100
             | 
             | ========================= | */
             using(var playgo = File.OpenRead($@"{gamedata_folder}\sce_sys\playgo-chunk.dat")) {
+                WLog($@"Parsing playgo-chunk.dat File\nPath:{gamedata_folder}\sce_sys\playgo-chunk.dat", 2);
 
                 byte[] buffer;
 
@@ -1402,6 +1448,7 @@ namespace libgp4 { // ver 1.26.100
             |
             | ========================= | */
             using(var sfo = File.OpenRead($@"{gamedata_folder}\sce_sys\param.sfo")) {
+                WLog($@"Parsing param.sfo File\nPath:{gamedata_folder}\sce_sys\param.sfo", 2);
 
                 byte[] buffer;
                 int[] ParamOffsets, DataTypes, ParamLengths;
@@ -1420,6 +1467,7 @@ namespace libgp4 { // ver 1.26.100
                 // Read PSF Parameter Count
                 sfo.Read(buffer, 0, 4);
                 var ParameterCount = BitConverter.ToInt32(buffer, 0);
+                WLog($"{ParameterCount} Parameters In .sfo", 2);
 
 
                 // Initialize Arrays
@@ -1463,7 +1511,7 @@ namespace libgp4 { // ver 1.26.100
 
                     sfo.Read(buffer = new byte[ParamLengths[i]], 0, ParamLengths[i]);
 
-                    Debug.WriteLine($"\nLabel: {SfoParamLabels[i]}");
+                    WLog($"\nLabel: {SfoParamLabels[i]}", 2);
 
 
                     // String
@@ -1477,55 +1525,16 @@ namespace libgp4 { // ver 1.26.100
                         if(((string)SfoParams[i])[0] == 0)
                             SfoParams[i] = "Empty String";
 
-                        Debug.WriteLine($"Param: {SfoParams[i]}");
+                        WLog($"Param: {SfoParams[i]}", 2);
                     }
 
                     // Int32
                     else if(DataTypes[i] == 4) {
                         SfoParams[i] = BitConverter.ToInt32(buffer, 0);
-                        Debug.WriteLine($"Param: {SfoParams[i]}");
+                        WLog($"Param: {SfoParams[i]}", 2);
                     }
                 }
 
-#if DEBUG
-                // Collection of Parameters Parsed From The Last of Us Part II, Kept For Testing Purposes
-                string[] DEBUG_misc_sfo_variables = new string[] {
-                        "APP_TYPE",
-                        "APP_VER",
-                        "ATTRIBUTE",
-                        "ATTRIBUTE2",
-                        "CATEGORY",
-                        "CONTENT_ID",
-                        "DEV_FLAG",
-                        "DOWNLOAD_DATA_SIZE",
-                        "FORMAT",
-                        "PARENTAL_LEVEL",
-                        "PUBTOOLINFO",
-                        "PUBTOOLMINVER",
-                        "PUBTOOLVER",
-                        "REMOTE_PLAY_KEY_ASSIGN",
-                        "SERVICE_ID_ADDCONT_ADD_1",
-                        "SERVICE_ID_ADDCONT_ADD_2",
-                        "SERVICE_ID_ADDCONT_ADD_3",
-                        "SERVICE_ID_ADDCONT_ADD_4",
-                        "SERVICE_ID_ADDCONT_ADD_5",
-                        "SERVICE_ID_ADDCONT_ADD_6",
-                        "SERVICE_ID_ADDCONT_ADD_7",
-                        "SYSTEM_VER",
-                        "TARGET_APP_VER",
-                        "TITLE",
-                        "TITLE_00",
-                        "TITLE_03",
-                        "TITLE_05",
-                        "TITLE_07",
-                        "TITLE_08",
-                        "TITLE_17",
-                        "TITLE_20",
-                        "TITLE_ID",
-                        "USER_DEFINED_PARAM_1",
-                        "VERSION"
-                };
-#endif
 
                 for(int i = 0; i < SfoParamLabels.Length; ++i)
                     switch(SfoParamLabels[i]) {
@@ -1544,7 +1553,7 @@ namespace libgp4 { // ver 1.26.100
                         case "TITLE_ID":
                             title_id = ((string)SfoParams[i]);
                             continue;
-#if DEBUG
+#if GUIExtras
                         case "APP_TYPE":
                             AppType = (int)SfoParams[i];
                             continue;
@@ -1569,7 +1578,7 @@ namespace libgp4 { // ver 1.26.100
 #endif
                     }
 
-#if DEBUG
+#if GUIExtras
                 if(AppTitles.Count > 0) //!
                     AppTitles.Prepend(AppTitle);
 #endif
@@ -1586,17 +1595,18 @@ namespace libgp4 { // ver 1.26.100
 
 
 
-            // Check The .gp4 For Any Potential Errors
+
+            // Check The Parsed Data For Any Potential Errors Before Building The .gp4 With It
             if(ErrorChecking)
-                VerifyGP4(gamedata_folder, playgo_content_id, content_id, category, version, app_ver);
+                VerifyGP4(gamedata_folder, playgo_content_id, content_id, category, app_ver);
 
 
 
-            //var NewTime = new TimeSpan(DateTime.Now.Day, DateTime.Now.Hour, DateTime.Now.Minute, DateTime.Now.Second, DateTime.Now.Millisecond);
+            base_elements = CreateBaseElements(category, gp4_timestamp, content_id, Passcode, SourcePkgPath, app_ver, version, chunk_count, scenario_count);
 
             BuildGp4Elements(
                 gp4.CreateXmlDeclaration("1.1", "utf-8", "yes"),
-                (base_elements = CreateBaseElements(category, gp4_timestamp, content_id, Passcode, SourcePkgPath, app_ver, version, chunk_count, scenario_count))[0],
+                psproject: base_elements[0],
                 volume: base_elements[1],
                 volume_type: base_elements[2],
                 volume_id: base_elements[3],
@@ -1610,15 +1620,12 @@ namespace libgp4 { // ver 1.26.100
             );
 
 
-            if(Directory.Exists(OutputPath))
-                gp4.Save(OutputPath = $@"{OutputPath}\{title_id}-{((category == "gd") ? "app" : "patch")}.gp4");
+            gp4.Save(OutputPath);
 
-            else
-                gp4.Save(OutputPath);
-
-
+#if Log
             WLog($"GP4 Creation Successful, File Saved As {OutputPath}", 0);
             WLog("=====================================================", 2);
+#endif
         }
         #endregion
 
@@ -1630,7 +1637,7 @@ namespace libgp4 { // ver 1.26.100
         #region Main Application Functions
 
 
-        private void VerifyGP4(string gamedata_folder, string playgo_content_id, string content_id, string category, string version, string app_ver) {
+        private void VerifyGP4(string gamedata_folder, string playgo_content_id, string content_id, string category, string app_ver) {
             string Errors = string.Empty;
 
             if(!Directory.Exists(gamedata_folder)) {
@@ -1678,14 +1685,6 @@ namespace libgp4 { // ver 1.26.100
 
 
 
-            if(true && false) {
-                var Error = $"Unimplemented Error Message.";
-                ELog(Error);
-                throw new Exception(Error);
-            }
-
-
-
             //  No Errors Detected  \\
             if(Errors == string.Empty)
                 return;
@@ -1703,7 +1702,7 @@ namespace libgp4 { // ver 1.26.100
             else
                 Errors = $"The Following {ErrorCount} Errors Were Found During The .gp4 Project Creation With Gamedata In: {gamedata_folder}.\n{Errors}";
 
-            DLog(Errors);
+            WLog(Errors, 2);
             throw new InvalidDataException(Errors);
         }
 
@@ -1722,7 +1721,7 @@ namespace libgp4 { // ver 1.26.100
 
             foreach(var blacklisted_file_or_folder in DefaultBlacklist)
                 if(filepath.Contains(blacklisted_file_or_folder)) {
-#if DEBUG
+#if Log
                     WLog($"Ignoring: {filepath}", 2);
 #endif
                     return true;
@@ -1731,7 +1730,7 @@ namespace libgp4 { // ver 1.26.100
             if(BlacklistedFilesOrFolders != null)
                 foreach(var blacklisted_file_or_folder in BlacklistedFilesOrFolders) {
                     if(filepath.Contains(blacklisted_file_or_folder)) {
-#if DEBUG
+#if Log
                         WLog($"User Ignoring: {filepath}", 2);
 #endif
                         return true;

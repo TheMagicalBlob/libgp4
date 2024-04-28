@@ -19,7 +19,7 @@
     <DebugType>full</DebugType>
     <Optimize>false</Optimize>
     <OutputPath>..\Gp4ProjectBuilder\bin\Debug\</OutputPath>
-    <DefineConstants>TRACE;DEBUG;GUIExtrass</DefineConstants>
+    <DefineConstants>TRACE;DEBUG;GUIExtras,Log</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
     <DocumentationFile>..\Gp4ProjectBuilder\bin\Debug\libgp4.xml</DocumentationFile>
