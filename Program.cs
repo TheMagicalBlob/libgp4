@@ -1335,9 +1335,9 @@ namespace libgp4 { // ver 1.26.100
             | 
             | ========================= | */
             using(var playgo = File.OpenRead($@"{gamedata_folder}\sce_sys\playgo-chunk.dat")) {
-                WLog($@"Parsing playgo-chunk.dat File\nPath:{gamedata_folder}\sce_sys\playgo-chunk.dat", 2);
+                WLog($"Parsing playgo-chunk.dat File\nPath:{gamedata_folder}\\sce_sys\\playgo-chunk.dat", 2);
 
-                byte[] buffer;
+                var buffer = new byte[4];
 
                 void ConvertbufferToStringArray(string[] StringArray) {
                     int byteIndex = 0, index;
@@ -1354,22 +1354,38 @@ namespace libgp4 { // ver 1.26.100
                     }
                 }
 
+
+                // Check playgo-chunk.dat File Magic
+                playgo.Read(buffer, 0, 4);
+                if(BitConverter.ToInt32(buffer, 0) != 1869048944)
+                    throw new InvalidDataException($"File Magic For .dat Wasn't Valid ([Expected: 70-6C-67-6F] != [Read: {BitConverter.ToString(buffer)}])");
+
+
                 // Read Chunk Count
                 playgo.Position = 0x0A;
                 chunk_count = (byte)playgo.ReadByte();
                 chunk_labels = new string[chunk_count];
+#if Log
+                WLog($"{chunk_count} Chunks in Project File", 2);
+#endif
 
-                // Read Scenario Count
+
+                // Read Scenario Count, An Initialize Related Arrays
                 playgo.Position = 0x0E;
                 scenario_count = (byte)playgo.ReadByte();
                 scenario_types = new int[scenario_count];
                 scenario_labels = new string[scenario_count];
                 initial_chunk_count = new int[scenario_count];
                 scenario_chunk_range = new int[scenario_count];
+#if Log
+                WLog($"{scenario_count} Scenarios in Project File", 2);
+#endif
+
 
                 // Read Default Scenario Id
                 playgo.Position = 0x14;
                 default_scenario_id = (byte)playgo.ReadByte();
+
 
                 // Read Content ID
                 buffer = new byte[36];
@@ -1377,11 +1393,13 @@ namespace libgp4 { // ver 1.26.100
                 playgo.Read(buffer, 0, 36);
                 playgo_content_id = Encoding.UTF8.GetString(buffer);
 
+
                 // Read Chunk Label Start Address From Pointer
                 buffer = new byte[4];
                 playgo.Position = 0xD0;
                 playgo.Read(buffer, 0, 4);
                 var chunk_label_pointer = BitConverter.ToInt32(buffer, 0);
+
 
                 // Read Length Of Chunk Label Byte Array
                 playgo.Position = 0xD4;
@@ -1408,17 +1426,20 @@ namespace libgp4 { // ver 1.26.100
                     scenario_chunk_range[index] = BitConverter.ToInt16(buffer, 2);
                 }
 
+
                 // Load Scenario Label Array Byte Length
                 buffer = new byte[2];
                 playgo.Position = 0xF4;
                 playgo.Read(buffer, 0, 2);
                 var scenario_label_array_length = BitConverter.ToInt16(buffer, 0);
 
+
                 // Load Scenario Label Pointer
                 playgo.Position = 0xF0;
                 buffer = new byte[4];
                 playgo.Read(buffer, 0, 4);
                 var scenario_label_array_pointer = BitConverter.ToInt32(buffer, 0);
+
 
                 // Load Scenario Labels
                 playgo.Position = scenario_label_array_pointer;
@@ -1448,14 +1469,14 @@ namespace libgp4 { // ver 1.26.100
             |
             | ========================= | */
             using(var sfo = File.OpenRead($@"{gamedata_folder}\sce_sys\param.sfo")) {
-                WLog($@"Parsing param.sfo File\nPath:{gamedata_folder}\sce_sys\param.sfo", 2);
+                WLog($"Parsing param.sfo File\nPath:{gamedata_folder}\\sce_sys\\param.sfo", 2);
 
-                byte[] buffer;
+                var buffer = new byte[12];
                 int[] ParamOffsets, DataTypes, ParamLengths;
 
 
                 // Check PSF File Magic, + 4 Bytes To Skip Label Base Ptr
-                sfo.Read(buffer = new byte[12], 0, 12);
+                sfo.Read(buffer, 0, 12);
                 if(BitConverter.ToInt64(buffer, 0) != 1104986460160)
                     throw new InvalidDataException($"File Magic For .sfo Wasn't Valid ([Expected: 00-50-53-46-01-01-00-00] != [Read: {BitConverter.ToString(buffer)}])");
 
@@ -1463,6 +1484,7 @@ namespace libgp4 { // ver 1.26.100
                 // Read Base Pointer For .pkg Parameters
                 sfo.Read(buffer = new byte[4], 0, 4);
                 var ParamVariablesPointer = BitConverter.ToInt32(buffer, 0);
+
 
                 // Read PSF Parameter Count
                 sfo.Read(buffer, 0, 4);
@@ -1495,6 +1517,7 @@ namespace libgp4 { // ver 1.26.100
                     sfo.Position += 4; // Skip Param Offset
                 }
 
+
                 // Load Parameter Labels
                 for(int index = 0, @byte; index < ParameterCount; index++) {
                     var ByteList = new List<byte>();
@@ -1506,6 +1529,7 @@ namespace libgp4 { // ver 1.26.100
                 }
 
 
+                // Load Parameter Data
                 for(int i = 0; i < ParameterCount; ParamVariablesPointer += ParamOffsets[++i]) {
                     sfo.Position = ParamVariablesPointer;
 
@@ -1514,7 +1538,7 @@ namespace libgp4 { // ver 1.26.100
                     WLog($"\nLabel: {SfoParamLabels[i]}", 2);
 
 
-                    // String
+                    // Datatype = string
                     if(DataTypes[i] == 2) {
                         if(ParamLengths[i] > 1 && buffer[ParamLengths[i] - 1] == 0)
                             SfoParams[i] = Encoding.UTF8.GetString(buffer, 0, buffer.Length - 1);
@@ -1528,7 +1552,7 @@ namespace libgp4 { // ver 1.26.100
                         WLog($"Param: {SfoParams[i]}", 2);
                     }
 
-                    // Int32
+                    // Datatype = Int32
                     else if(DataTypes[i] == 4) {
                         SfoParams[i] = BitConverter.ToInt32(buffer, 0);
                         WLog($"Param: {SfoParams[i]}", 2);
@@ -1536,6 +1560,7 @@ namespace libgp4 { // ver 1.26.100
                 }
 
 
+                // Store Required Parameters
                 for(int i = 0; i < SfoParamLabels.Length; ++i)
                     switch(SfoParamLabels[i]) {
                         case "APP_VER":
@@ -1553,13 +1578,15 @@ namespace libgp4 { // ver 1.26.100
                         case "TITLE_ID":
                             title_id = ((string)SfoParams[i]);
                             continue;
+
 #if GUIExtras
+                        // Store Some Extra Things I May Use In My .gp4 GUI
                         case "APP_TYPE":
                             AppType = (int)SfoParams[i];
                             continue;
 
                         case "TITLE":
-                            AppTitle = ((string)SfoParams[i]);
+                            AppTitles.Add(AppTitle = ((string)SfoParams[i]));
                             continue;
 
                         default:
@@ -1568,8 +1595,6 @@ namespace libgp4 { // ver 1.26.100
                             continue;
 
                         case "FORMAT":
-                        case "PARENTAL_LEVEL":
-                        case "PUBTOOLINFO":
                         case "PUBTOOLMINVER":
                         case "PUBTOOLVER":
                         case "SYSTEM_VER":
@@ -1577,11 +1602,6 @@ namespace libgp4 { // ver 1.26.100
                             continue;
 #endif
                     }
-
-#if GUIExtras
-                if(AppTitles.Count > 0) //!
-                    AppTitles.Prepend(AppTitle);
-#endif
             }
 
 
@@ -1689,7 +1709,7 @@ namespace libgp4 { // ver 1.26.100
             if(Errors == string.Empty)
                 return;
 
-
+            lookhere
 
             //==================================================\\
             //| Throw An Exception If Any Errors Were Detected |\\
