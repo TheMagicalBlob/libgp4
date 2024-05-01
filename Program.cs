@@ -1544,7 +1544,7 @@ namespace libgp4 { // ver 1.26.100
 
                     sfo.Read(buffer = new byte[ParamLengths[i]], 0, ParamLengths[i]);
 
-                    WLog($"\nLabel: {SfoParamLabels[i]}", 2);
+                    DLog($"\nLabel: {SfoParamLabels[i]}");
 
 
                     // Datatype = string
@@ -1558,13 +1558,13 @@ namespace libgp4 { // ver 1.26.100
                         if(((string)SfoParams[i])[0] == 0)
                             SfoParams[i] = "Empty String";
 
-                        WLog($"Param: {SfoParams[i]}", 2);
+                        DLog($"Param: {SfoParams[i]}");
                     }
 
                     // Datatype = Int32
                     else if(DataTypes[i] == 4) {
                         SfoParams[i] = BitConverter.ToInt32(buffer, 0);
-                        WLog($"Param: {SfoParams[i]}", 2);
+                        DLog($"Param: {SfoParams[i]}");
                     }
                 }
 
@@ -1590,9 +1590,9 @@ namespace libgp4 { // ver 1.26.100
                         case "PUBTOOLINFO":
 #if GUIExtras
                             var arr = ((string)SfoParams[i]).Split(',');
-                            CreationDate = arr[0];
-                            SdkVersion   = arr[1];
-                            storage_type = arr[2]; // (digital25 / bd50)
+                            CreationDate = arr[0].Substring(arr[0].IndexOf('='));
+                            SdkVersion   = arr[1].Substring(arr[1].IndexOf('='));
+                            storage_type = arr[2].Substring(arr[2].IndexOf('=')); // (digital25 / bd50)
 #else
                             storage_type = ((string)SfoParams[i]).Split(',')[2]; // (digital25 / bd50)
 #endif
