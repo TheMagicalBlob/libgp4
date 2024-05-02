@@ -95,7 +95,7 @@ namespace libgp4 { // ver 1.26.100
 
         /// <summary> Console Logging Method. </summary>
         private static void DLog(object o) {
-
+#if DEBUG
             if(enable_output_channel[0])
                 try { Debug.WriteLine("#libgp4.dll: " + o); }
                 catch(Exception) { enable_output_channel[0] = false; }
@@ -103,6 +103,7 @@ namespace libgp4 { // ver 1.26.100
             if(!Console.IsOutputRedirected && enable_output_channel[1]) // Avoid Duplicate Writes
                 try { Console.WriteLine("#libgp4.dll: " + o); }
                 catch(Exception) { enable_output_channel[1] = false; }
+#endif
         }
 
         /// <summary> Error Logging Method. </summary>
@@ -1124,9 +1125,9 @@ namespace libgp4 { // ver 1.26.100
         /// Output Log Messages To A Custom Output Method (GP4Creator.LoggingMethod(string)), And/Or To The Console If Applicable.<br/><br/>
         /// Duplicates Message To Standard Console Output As Well.
         ///</summary>
-        private void WLog(object o, int level) {
+        private void WLog(object o, bool Verbosity) {
 #if Log
-            if(LoggingMethod != null && LogVerbosity - level <= 0)
+            if(LoggingMethod != null && !(VerboseLogging ^= Verbosity))
                 LoggingMethod(o as string);
 #endif
 
@@ -1137,13 +1138,13 @@ namespace libgp4 { // ver 1.26.100
 
         /// <summary> Console Logging Method.
         ///</summary>
-        private string DLog(object o, string i = "#libgp4.dll: ") {
+        private string DLog(object o) {
 #if DEBUG
-            try { Console.WriteLine(i + o); }
+            try { Debug.WriteLine(o); }
             catch(Exception){}
 
             if(!Console.IsOutputRedirected)
-                try { Debug.WriteLine(i + o); }
+                try { Console.WriteLine(o); }
                 catch(Exception){}
 #endif
             return o as string;
@@ -1188,12 +1189,9 @@ namespace libgp4 { // ver 1.26.100
         public Action<object> LoggingMethod = null;
 
         /// <summary>
-        /// Limit GP4 Log Verbosity.
-        /// <br/>0: Basic
-        /// <br/>1: Verbose
-        /// <br/>0: Verbose &amp; Debug
+        /// Set GP4 Log Verbosity.
         /// </summary>
-        public int LogVerbosity;
+        public bool VerboseLogging;
 #endif
 
 
@@ -1321,9 +1319,8 @@ namespace libgp4 { // ver 1.26.100
 
 
 #if Log
-            WLog("=====================================================", 1);
-            WLog($"Starting .gp4 Creation.", 0);
-            WLog($"PKG Passcode: {Passcode}\nSource .pkg Path: {SourcePkgPath}", 1);
+            WLog($"Starting .gp4 Creation.", false);
+            WLog($"PKG Passcode: {Passcode}\nSource .pkg Path: {SourcePkgPath}\n", true);
 #endif
 
 
@@ -1345,7 +1342,7 @@ namespace libgp4 { // ver 1.26.100
             | 
             | ========================= | */
             using(var playgo = File.OpenRead($@"{gamedata_folder}\sce_sys\playgo-chunk.dat")) {
-                WLog($"Parsing playgo-chunk.dat File\nPath:{gamedata_folder}\\sce_sys\\playgo-chunk.dat", 1);
+                WLog($"Parsing playgo-chunk.dat File\nPath:{gamedata_folder}\\sce_sys\\playgo-chunk.dat", true);
 
                 var buffer = new byte[4];
 
@@ -1376,7 +1373,7 @@ namespace libgp4 { // ver 1.26.100
                 chunk_count = (byte)playgo.ReadByte();
                 chunk_labels = new string[chunk_count];
 #if Log
-                WLog($"{chunk_count} Chunks in Project File", 1);
+                WLog($"{chunk_count} Chunks in Project File", true);
 #endif
 
 
@@ -1388,7 +1385,7 @@ namespace libgp4 { // ver 1.26.100
                 initial_chunk_count = new int[scenario_count];
                 scenario_chunk_range = new int[scenario_count];
 #if Log
-                WLog($"{scenario_count} Scenarios in Project File", 1);
+                WLog($"{scenario_count} Scenarios in Project File", true);
 #endif
 
 
@@ -1436,6 +1433,9 @@ namespace libgp4 { // ver 1.26.100
                     scenario_chunk_range[index] = BitConverter.ToInt16(buffer, 2);
                 }
 
+#if Log
+                DLog($"Default Scenario Type = {scenario_types[default_scenario_id]}");
+#endif
 
                 // Load Scenario Label Array Byte Length
                 buffer = new byte[2];
@@ -1463,6 +1463,8 @@ namespace libgp4 { // ver 1.26.100
                 playgo.Position = chunk_label_pointer;
                 playgo.Read(buffer, 0, buffer.Length);
                 ConvertbufferToStringArray(chunk_labels);
+
+                DLog('\n');
             }
 
 
@@ -1479,7 +1481,7 @@ namespace libgp4 { // ver 1.26.100
             |
             | ========================= | */
             using(var sfo = File.OpenRead($@"{gamedata_folder}\sce_sys\param.sfo")) {
-                WLog($"Parsing param.sfo File\nPath:{gamedata_folder}\\sce_sys\\param.sfo", 1);
+                WLog($"Parsing param.sfo File\nPath:{gamedata_folder}\\sce_sys\\param.sfo", true);
 
                 var buffer = new byte[12];
                 int[] ParamOffsets, DataTypes, ParamLengths;
@@ -1491,15 +1493,15 @@ namespace libgp4 { // ver 1.26.100
                     throw new InvalidDataException($"File Magic For .sfo Wasn't Valid ([Expected: 00-50-53-46-01-01-00-00] != [Read: {BitConverter.ToString(buffer)}])");
 
 
-                // Read Base Pointer For .pkg Parameters
+                // Read Base Pointer For .sfo Parameters
                 sfo.Read(buffer = new byte[4], 0, 4);
                 var ParamVariablesPointer = BitConverter.ToInt32(buffer, 0);
-
+                DLog($"Base Pointer For Parameters: {ParamVariablesPointer:X}");
 
                 // Read PSF Parameter Count
                 sfo.Read(buffer, 0, 4);
                 var ParameterCount = BitConverter.ToInt32(buffer, 0);
-                WLog($"{ParameterCount} Parameters In .sfo", 1);
+                WLog($"{ParameterCount} Parameters In .sfo", true);
 
 
                 // Initialize Arrays
@@ -1509,7 +1511,7 @@ namespace libgp4 { // ver 1.26.100
                 ParamLengths = new int[ParameterCount];
                 ParamOffsets = new int[ParameterCount];
 
-
+                DLog(sfo.Position.ToString("X"));
                 // Load Related Data For Each Parameter
                 for(int i = 0; i < ParameterCount; ++i) {
 
@@ -1529,7 +1531,7 @@ namespace libgp4 { // ver 1.26.100
 
 
                 // Load Parameter Labels
-                for(int index = 0, @byte; index < ParameterCount; index++) {
+                for(int index = 0, @byte; index < ParameterCount; ++index) {
                     var ByteList = new List<byte>();
 
                     // Read To End Of Label
@@ -1538,14 +1540,13 @@ namespace libgp4 { // ver 1.26.100
                     SfoParamLabels[index] = Encoding.UTF8.GetString(ByteList.ToArray());
                 }
 
-
                 // Load Parameter Data
-                for(int i = 0; i < ParameterCount; ParamVariablesPointer += ParamOffsets[++i]) {
-                    sfo.Position = ParamVariablesPointer;
+                sfo.Position = ParamVariablesPointer;
+                for(int i = 0; i < ParameterCount - 1; sfo.Position += ParamOffsets[++i]) {
 
                     sfo.Read(buffer = new byte[ParamLengths[i]], 0, ParamLengths[i]);
 
-                    DLog($"\nLabel: {SfoParamLabels[i]}");
+                    DLog($"Label: {SfoParamLabels[i]}");
 
 
                     // Datatype = string
@@ -1556,9 +1557,6 @@ namespace libgp4 { // ver 1.26.100
                             SfoParams[i] = Encoding.UTF8.GetString(buffer);
 
 
-                        if(((string)SfoParams[i])[0] == 0)
-                            SfoParams[i] = "Empty String";
-
                         DLog($"Param: {SfoParams[i]}");
                     }
 
@@ -1567,6 +1565,8 @@ namespace libgp4 { // ver 1.26.100
                         SfoParams[i] = BitConverter.ToInt32(buffer, 0);
                         DLog($"Param: {SfoParams[i]}");
                     }
+
+                    DLog('\n');
                 }
 
 
@@ -1587,7 +1587,10 @@ namespace libgp4 { // ver 1.26.100
 
                         case "PUBTOOLINFO":
                             #if GUIExtras
+                            Debug.WriteLine((string)SfoParams[i]);
                             var arr = ((string)SfoParams[i]).Split(',');
+                            foreach(var v in arr)
+                                Debug.WriteLine(v);
                             CreationDate = arr[0].Substring(arr[0].IndexOf('='));
                             SdkVersion   = arr[1].Substring(arr[1].IndexOf('='));
                             storage_type = arr[2].Substring(arr[2].IndexOf('=')); // (digital25 / bd50)
@@ -1640,6 +1643,8 @@ namespace libgp4 { // ver 1.26.100
             // Create Base .gp4 Elements (Up To Chunk/Scenario Data)
             base_elements = CreateBaseElements(category, gp4_timestamp, content_id, Passcode, SourcePkgPath, app_ver, version, chunk_count, scenario_count);
 
+
+            // Create The Actual .go4 Structure
             BuildGp4Elements(
                 gp4.CreateXmlDeclaration("1.1", "utf-8", "yes"),
                 psproject: base_elements[0],
@@ -1656,11 +1661,10 @@ namespace libgp4 { // ver 1.26.100
             );
 
 
+            // Write The .go4 File To The Provided Folder / As The Provided Filename
             gp4.Save(GP4OutputPath);
-
 #if Log
-            WLog($"GP4 Creation Successful, File Saved As {GP4OutputPath}", 0);
-            WLog("=====================================================", 1);
+            WLog($"GP4 Creation Successful, File Saved As {GP4OutputPath}", false);
 #endif
         }
         #endregion
@@ -1719,7 +1723,7 @@ namespace libgp4 { // ver 1.26.100
                 Errors = $"The Following {ErrorCount} Errors Were Found During The .gp4 Project Creation With Gamedata In: {gamedata_folder}.\n{Errors}";
 
 
-            WLog(Errors, 2);
+            WLog(Errors, true);
 
 
             throw new InvalidDataException(Errors);
