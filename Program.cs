@@ -1016,11 +1016,25 @@ namespace libgp4 { // ver 1.26.100
 
         /// <summary>
         /// Initialize A New Instance Of The GP4Creator Class With Which To Edit<br/>
-        /// Parses The param.sfo &amp; playgo-chunks.dat As Well As The Project Files/Folders Without Building The .gp4.
+        /// [DOESN'T ACTUALLY DO THIS RN] Parses The param.sfo &amp; playgo-chunks.dat As Well As The Project Files/Folders Without Building The .gp4.
         /// </summary>
         /// 
         /// <param name="GamedataFolder"> The Folder Containing The Gamedata To Create A .gp4 Project File For. </param>
         public GP4Creator(string GamedataFolder) {
+            Passcode = "00000000000000000000000000000000";
+            gamedata_folder = GamedataFolder;
+            Keystone = true;
+            gp4 = new XmlDocument();
+            // DO SOMETHING EXTRA (for your own app, decide whtehr to inculude itin the releas verison ;ater on)
+        }
+
+
+        /// <summary>
+        /// Initialize A New Instance Of The GP4Creator Class With Which To Edit<br/>
+        /// Parses The param.sfo &amp; playgo-chunks.dat As Well As The Project Files/Folders Without Building The .gp4.
+        /// </summary>
+        /// 
+        public GP4Creator() {
             Passcode = "00000000000000000000000000000000";
             gamedata_folder = GamedataFolder;
             Keystone = true;
@@ -1540,9 +1554,10 @@ namespace libgp4 { // ver 1.26.100
                     SfoParamLabels[index] = Encoding.UTF8.GetString(ByteList.ToArray());
                 }
 
-                // Load Parameter Data
+                // Load Parameter Values
                 sfo.Position = ParamVariablesPointer;
                 for(int i = 0; i < ParameterCount - 1; sfo.Position += ParamOffsets[++i]) {
+                    DLog($"Sfo Param: {SfoParamLabels[i]} at {sfo.Position:X} | len={ParamLengths[i]}");
 
                     sfo.Read(buffer = new byte[ParamLengths[i]], 0, ParamLengths[i]);
 
@@ -1555,7 +1570,6 @@ namespace libgp4 { // ver 1.26.100
                             SfoParams[i] = Encoding.UTF8.GetString(buffer, 0, buffer.Length - 1);
                         else
                             SfoParams[i] = Encoding.UTF8.GetString(buffer);
-
 
                         DLog($"Param: {SfoParams[i]}");
                     }
