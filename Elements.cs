@@ -69,7 +69,7 @@ namespace libgp4 {
 
                 var file = gp4.CreateElement("file");
                 file.SetAttribute("targ_path", (file_paths[index].Replace(gamedata_folder + "\\", string.Empty)).Replace('\\', '/'));
-                file.SetAttribute("orig_path", file_paths[index]);
+                file.SetAttribute("orig_path", AbsoluteFilePaths ? file_paths[index] : file_paths[index].Replace(gamedata_folder, string.Empty) );
 
                 if(!SkipPfsCompressionForFile(file_paths[index]))
                     file.SetAttribute("pfs_compression", "enable");
