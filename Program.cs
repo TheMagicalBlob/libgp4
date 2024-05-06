@@ -1020,7 +1020,6 @@ namespace libgp4 { // ver 1.26.100
             gamedata_folder = GamedataFolder;
             Passcode = "00000000000000000000000000000000";
             Keystone = true;
-            gp4 = new XmlDocument();
             // DO SOMETHING EXTRA (for your own app, decide whtehr to inculude itin the releas verison ;ater on)
         }
 
@@ -1033,7 +1032,6 @@ namespace libgp4 { // ver 1.26.100
         public GP4Creator() {
             Passcode = "00000000000000000000000000000000";
             Keystone = true;
-            gp4 = new XmlDocument();
         }
 
 
@@ -1044,9 +1042,9 @@ namespace libgp4 { // ver 1.26.100
         ///////////////////////\\\\\\\\\\\\\\\\\\\\\
         #region Basic Internal Variables
 
-        /// <summary> Main GP4 Structure Refference.
+        /// <summary> Main GP4 Structure refrence.
         ///</summary>
-        private readonly XmlDocument gp4;
+        private XmlDocument gp4;
 
         /// <summary> Root Gamedata Directory To Be Parsed. (Should Contain At Least An Executable And sce_sys Folder)
         ///</summary>
@@ -1290,7 +1288,7 @@ namespace libgp4 { // ver 1.26.100
         /// <param name="GP4OutputPath"> Folder In Which To Place The Newly Build .gp4 Project File. </param>
         /// <param name="VerifyIntegrity"> Set Whether Or Not To Abort The Creation Process If An Error Is Found That Would Cause .pkg Creation To Fail, Or Simply Log It To The Standard Console Output And/Or LogOutput(string) Action. </param>
         public void CreateGP4(string GP4OutputPath, bool VerifyIntegrity) {
-            
+
             // Timestamp For GP4, Same Format Sony Used Though Sony's Technically Only Tracks The Date,
             // With The Time Left As 00:00, But Imma Just Add The Time. It Doesn't Break Anything).
             var gp4_timestamp = DateTime.Now.GetDateTimeFormats()[78];
@@ -1322,8 +1320,8 @@ namespace libgp4 { // ver 1.26.100
                 chunk_labels,   // Array Of All Chunk Names
                 scenario_labels // Array Of All Scenario Names
             ;
-
-            XmlNode[] base_elements;
+            
+            gp4 = new XmlDocument();
 
 
 
@@ -1562,7 +1560,7 @@ namespace libgp4 { // ver 1.26.100
 
                     sfo.Read(buffer = new byte[ParamLengths[i]], 0, ParamLengths[i]);
 
-                    DLog($"Label: {SfoParamLabels[i]} ({i})");
+                    DLog($"Label: {SfoParamLabels[i]}");
 
 
                     // Datatype = string
@@ -1572,13 +1570,13 @@ namespace libgp4 { // ver 1.26.100
                         else
                             SfoParams[i] = Encoding.UTF8.GetString(buffer);
 
-                        DLog($"Param: {SfoParams[i]} ({i})");
+                        DLog($"Param: {SfoParams[i]}");
                     }
 
                     // Datatype = Int32
                     else if(DataTypes[i] == 4) {
                         SfoParams[i] = BitConverter.ToInt32(buffer, 0);
-                        DLog($"Param: {SfoParams[i]} ({i})");
+                        DLog($"Param: {SfoParams[i]}");
                     }
 
                     DLog('\n');
@@ -1665,7 +1663,7 @@ namespace libgp4 { // ver 1.26.100
 
 
             // Create Base .gp4 Elements (Up To Chunk/Scenario Data)
-            base_elements = CreateBaseElements(category, gp4_timestamp, content_id, Passcode, SourcePkgPath, app_ver, version, chunk_count, scenario_count);
+            XmlNode[] base_elements = CreateBaseElements(category, gp4_timestamp, content_id, Passcode, SourcePkgPath, app_ver, version, chunk_count, scenario_count);
 
             // Create The Actual .go4 Structure
             BuildGp4Elements(

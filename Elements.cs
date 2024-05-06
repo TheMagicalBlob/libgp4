@@ -58,7 +58,7 @@ namespace libgp4 {
 
 
         /// <summary>
-        ///   Create "files" Element, Containing File Destination And Source Paths, Along With Whether To Enable PFS Compression
+        /// Create "files" Element Containing File Destination And Source Paths, Along With Whether To Enable PFS Compression.
         /// </summary>
         private XmlNode CreateFilesElement(string[][] extra_files, string[] file_paths, int chunk_count, string gamedata_folder) {
             var files = gp4.CreateElement("files");
@@ -68,8 +68,13 @@ namespace libgp4 {
                     continue;
 
                 var file = gp4.CreateElement("file");
-                file.SetAttribute("targ_path", (file_paths[index].Replace(gamedata_folder + "\\", string.Empty)).Replace('\\', '/'));
-                file.SetAttribute("orig_path", AbsoluteFilePaths ? file_paths[index] : file_paths[index].Replace(gamedata_folder, string.Empty) );
+                file.SetAttribute("targ_path", file_paths[index].Remove(0, gamedata_folder.Length + 1).Replace('\\', '/'));
+                file.SetAttribute(
+                    "orig_path",
+                    AbsoluteFilePaths ?
+                    file_paths[index] :
+                    file_paths[index].Remove(0, gamedata_folder.Length + 1) // Strip
+                );
 
                 if(!SkipPfsCompressionForFile(file_paths[index]))
                     file.SetAttribute("pfs_compression", "enable");
@@ -80,13 +85,15 @@ namespace libgp4 {
                 files.AppendChild(file);
             }
 
+
+            // Add Any Extra Files From The User (Test This)
             if (extra_files != null)
                 for(var index = 0; index < extra_files.Length; index++) {
                     if(FileShouldBeExcluded(extra_files[index][1]))
                         continue;
 
                     var file = gp4.CreateElement("file");
-                    file.SetAttribute("targ_path", (extra_files[index][0].Replace(gamedata_folder + "\\", string.Empty)).Replace('\\', '/'));
+                    file.SetAttribute("targ_path", (extra_files[index][0].Remove(0, gamedata_folder.Length + 1)).Replace('\\', '/'));
                     file.SetAttribute("orig_path", extra_files[index][1]);
 
                     if(!SkipPfsCompressionForFile(extra_files[index][1]))
@@ -101,8 +108,7 @@ namespace libgp4 {
             return files;
         }
 
-        /// <summary>
-        ///    Create "rootdir" Element Containing The Game's File Structure through A Listing Of Each Directory And Subdirectory
+        /// <summary> Create "rootdir" Element Containing The Game's File Structure through A Listing Of Each Directory And Subdirectory
         /// </summary>
         private XmlNode CreateRootDirectoryElement(string gamedata_folder) {
             var rootdir = gp4.CreateElement("rootdir");
@@ -130,8 +136,7 @@ namespace libgp4 {
             return rootdir;
         }
 
-        /// <summary>
-        ///   Create "chunks" Element
+        /// <summary> Create "chunks" Element
         /// </summary>
         private XmlNode CreateChunksElement(string[] chunk_labels, int chunk_count) {
             var chunks = gp4.CreateElement("chunks");
@@ -149,8 +154,7 @@ namespace libgp4 {
             return chunks;
         }
 
-        /// <summary>
-        ///   Create "scenarios" Element
+        /// <summary> Create "scenarios" Element
         /// </summary>
         private XmlNode CreateScenariosElement(int default_scenario_id, int scenario_count, int[] initial_chunk_count, int[] scenario_types, string[] scenario_labels, int[] scenario_chunk_range) {
             var scenarios = gp4.CreateElement("scenarios");
@@ -175,12 +179,10 @@ namespace libgp4 {
             return scenarios;
         }
 
-        /// <summary>
-        ///   Build .gp4 Structure And Save To File
+        /// <summary> Build .gp4 Structure And Save To File
         ///</summary>
         /// <returns> Time Taken For Build Process </returns>
         public void BuildGp4Elements(XmlDeclaration gp4_declaration, XmlNode psproject, XmlNode volume, XmlNode volume_type, XmlNode volume_id, XmlNode scenarios, XmlNode volume_ts, XmlNode package, XmlNode chunk_info, XmlNode files, XmlNode rootdir, XmlNode chunks) {
-          
 
             gp4.AppendChild(gp4_declaration);
             gp4.AppendChild(psproject);
@@ -199,7 +201,7 @@ namespace libgp4 {
             psproject.AppendChild(files);
             psproject.AppendChild(rootdir); 
             
-            gp4.AppendChild(gp4.CreateComment($"gengp4.exe Alternative. (add a link to the library repository)"));
+            gp4.AppendChild(gp4.CreateComment("gengp4.exe Alternative. {//! add a link to the library repository!!!}")); //!
         }
 
         #endregion
