@@ -1135,10 +1135,11 @@ namespace libgp4 { // ver 1.26.100
 #if Log
             if(LoggingMethod != null && !(VerboseLogging ^= Verbosity))
                 LoggingMethod(o as string);
-#endif
 
 #if DEBUG
             DLog(o);
+#endif
+
 #endif
         }
 
@@ -1344,7 +1345,7 @@ namespace libgp4 { // ver 1.26.100
             | 
             | ========================= | */
             using(var playgo = File.OpenRead($@"{gamedata_folder}\sce_sys\playgo-chunk.dat")) {
-#if DEBUG
+#if Log
                 WLog($"Parsing playgo-chunk.dat File\nPath: {gamedata_folder}\\sce_sys\\playgo-chunk.dat", true);
 #endif
 
@@ -1468,7 +1469,9 @@ namespace libgp4 { // ver 1.26.100
                 playgo.Read(buffer, 0, buffer.Length);
                 ConvertbufferToStringArray(chunk_labels);
 
+#if Log
                 DLog('\n');
+#endif
             }
 
 
@@ -1485,7 +1488,7 @@ namespace libgp4 { // ver 1.26.100
             |
             | ========================= | */
             using(var sfo = File.OpenRead($@"{gamedata_folder}\sce_sys\param.sfo")) {
-#if DEBUG
+#if Log
                 WLog($"Parsing param.sfo File\nPath: {gamedata_folder}\\sce_sys\\param.sfo", true);
 #endif
 
@@ -1502,12 +1505,16 @@ namespace libgp4 { // ver 1.26.100
                 // Read Base Pointer For .sfo Parameters
                 sfo.Read(buffer = new byte[4], 0, 4);
                 var ParamVariablesPointer = BitConverter.ToInt32(buffer, 0);
+#if Log
                 DLog($"Base Pointer For Parameters: {ParamVariablesPointer:X}");
+#endif
 
                 // Read PSF Parameter Count
                 sfo.Read(buffer, 0, 4);
                 var ParameterCount = BitConverter.ToInt32(buffer, 0);
+#if Log
                 WLog($"{ParameterCount} Parameters In .sfo", true);
+#endif
 
 
                 // Initialize Arrays
@@ -1518,7 +1525,6 @@ namespace libgp4 { // ver 1.26.100
                 ParamOffsets = new int[ParameterCount];
 
                 // Load Related Data For Each Parameter
-                DLog($"Reading Param Data Starting At: {sfo.Position:X}");
                 for(int i = 0; i < ParameterCount; ++i) { // Skip Param Offset Each Run
 
                     sfo.Position += 3; // Skip Label Offset
@@ -1549,18 +1555,15 @@ namespace libgp4 { // ver 1.26.100
 
                 // Load Parameter Values
                 sfo.Position = ParamVariablesPointer;
-                DLog($"Reading Parameters Starting At: {sfo.Position:X}");
-                
                 for(int i = 0; i < ParameterCount; ++i) {
 
                     sfo.Position = ParamVariablesPointer + ParamOffsets[i];
 
-                    DLog($"Sfo Param: {SfoParamLabels[i]} at {sfo.Position:X} ({ParamVariablesPointer:X} + {ParamOffsets[i]:X}) | len={ParamLengths[i]}");
-
                     sfo.Read(buffer = new byte[ParamLengths[i]], 0, ParamLengths[i]);
 
+#if Log
                     DLog($"Label: {SfoParamLabels[i]}");
-
+#endif
 
                     // Datatype = string
                     if(DataTypes[i] == 2) {
@@ -1569,16 +1572,22 @@ namespace libgp4 { // ver 1.26.100
                         else
                             SfoParams[i] = Encoding.UTF8.GetString(buffer);
 
+#if Log
                         DLog($"Param: {SfoParams[i]}");
+#endif
                     }
 
                     // Datatype = Int32
                     else if(DataTypes[i] == 4) {
                         SfoParams[i] = BitConverter.ToInt32(buffer, 0);
+#if Log
                         DLog($"Param: {SfoParams[i]}");
+#endif
                     }
 
+#if Log
                     DLog('\n');
+#endif
                 }
 
 
