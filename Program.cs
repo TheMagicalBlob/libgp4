@@ -1288,6 +1288,10 @@ namespace libgp4 { // ver 1.26.100
         /// <param name="GP4OutputPath"> Folder In Which To Place The Newly Build .gp4 Project File. </param>
         /// <param name="VerifyIntegrity"> Set Whether Or Not To Abort The Creation Process If An Error Is Found That Would Cause .pkg Creation To Fail, Or Simply Log It To The Standard Console Output And/Or LogOutput(string) Action. </param>
         public void CreateGP4(string GP4OutputPath, bool VerifyIntegrity) {
+#if Log
+            WLog($"Starting .gp4 Creation.", false);
+            WLog($"PKG Passcode: {Passcode}\nSource .pkg Path: {SourcePkgPath}\n", true);
+#endif
 
             // Timestamp For GP4, Same Format Sony Used Though Sony's Technically Only Tracks The Date,
             // With The Time Left As 00:00, But Imma Just Add The Time. It Doesn't Break Anything).
@@ -1321,15 +1325,6 @@ namespace libgp4 { // ver 1.26.100
                 scenario_labels // Array Of All Scenario Names
             ;
             
-            gp4 = new XmlDocument();
-
-
-
-#if Log
-            WLog($"Starting .gp4 Creation.", false);
-            WLog($"PKG Passcode: {Passcode}\nSource .pkg Path: {SourcePkgPath}\n", true);
-#endif
-
 
 
 
@@ -1349,7 +1344,9 @@ namespace libgp4 { // ver 1.26.100
             | 
             | ========================= | */
             using(var playgo = File.OpenRead($@"{gamedata_folder}\sce_sys\playgo-chunk.dat")) {
+#if DEBUG
                 WLog($"Parsing playgo-chunk.dat File\nPath: {gamedata_folder}\\sce_sys\\playgo-chunk.dat", true);
+#endif
 
                 var buffer = new byte[4];
 
@@ -1488,7 +1485,9 @@ namespace libgp4 { // ver 1.26.100
             |
             | ========================= | */
             using(var sfo = File.OpenRead($@"{gamedata_folder}\sce_sys\param.sfo")) {
+#if DEBUG
                 WLog($"Parsing param.sfo File\nPath: {gamedata_folder}\\sce_sys\\param.sfo", true);
+#endif
 
                 var buffer = new byte[12];
                 int[] ParamOffsets, DataTypes, ParamLengths;
@@ -1642,8 +1641,9 @@ namespace libgp4 { // ver 1.26.100
             }
 
 
+
             // Get The Paths Of All Project Files & Subdirectories In The Given Project Folder. 
-            var file_info = new DirectoryInfo(gamedata_folder).GetFiles(".", SearchOption.AllDirectories);
+            var file_info = new DirectoryInfo(gamedata_folder).GetFiles(".", SearchOption.AllDirectories); //! why the period search pattern?
             file_paths = new string[file_info.Length];
 
             for(var index = 0; index < file_info.Length; index++)
@@ -1652,18 +1652,22 @@ namespace libgp4 { // ver 1.26.100
 
 
 
-            if(Directory.Exists(GP4OutputPath))
+            if(Directory.Exists(GP4OutputPath)) {
                 GP4OutputPath = $@"{GP4OutputPath}\{title_id}-{((category == "gd") ? "app" : "patch")}.gp4";
+            }
 
 
             // Check The Parsed Data For Any Potential Errors Before Building The .gp4 With It
-            if(VerifyIntegrity)
+            if(VerifyIntegrity) {
                 VerifyGP4(gamedata_folder, playgo_content_id, content_id, category, app_ver);
+            }
+
 
 
 
             // Create Base .gp4 Elements (Up To Chunk/Scenario Data)
-            XmlNode[] base_elements = CreateBaseElements(category, gp4_timestamp, content_id, Passcode, SourcePkgPath, app_ver, version, chunk_count, scenario_count);
+            gp4 = new XmlDocument();
+            var base_elements = CreateBaseElements(category, gp4_timestamp, content_id, Passcode, SourcePkgPath, app_ver, version, chunk_count, scenario_count);
 
             // Create The Actual .go4 Structure
             BuildGp4Elements(
@@ -1703,7 +1707,7 @@ namespace libgp4 { // ver 1.26.100
             int ErrorCount;
 
             if(!Directory.Exists(gamedata_folder))
-                Errors += $"Could Not Find The Provided Game Data Directory.\n\nPath Provided:\n\"{gamedata_folder}\"\n\n";
+                Errors += $"Could Not Find The Provided Game Data Directory.\n \nPath Provided: \"{gamedata_folder}\"\n\n"; // Spaced Out The First Double-line-break To Avoid Counting This Error As Two
 
             if(playgo_content_id != content_id)
                 Errors += $"Content ID Mismatch Detected, Process Aborted\n[playgo-chunks.dat: {playgo_content_id} != param.sfo: {content_id}]\n\n";
@@ -1738,14 +1742,15 @@ namespace libgp4 { // ver 1.26.100
             //| Throw An Exception If Any Errors Were Detected |\\
             //==================================================\\
 
-            if((ErrorCount = (Errors.Length - Errors.Replace("\n\n", "").Length) / 2) == 1)
+            if((ErrorCount = (Errors.Length - Errors.Replace("\n\n", string.Empty).Length) / 2) == 1)
                 Errors = $"The Following Error Was Found During The .gp4 Project Creation With Gamedata In: {gamedata_folder}.\n{Errors}";
             else
                 Errors = $"The Following {ErrorCount} Errors Were Found During The .gp4 Project Creation With Gamedata In: {gamedata_folder}.\n{Errors}";
 
-
+#if Log
+            DLog(Errors);
             WLog(Errors, true);
-
+#endif
 
             throw new InvalidDataException(Errors);
         }
@@ -1790,7 +1795,7 @@ namespace libgp4 { // ver 1.26.100
         /// </summary>
         /// <returns> True If Pfs Compression Should Be Enabled. </returns>
         private bool SkipPfsCompressionForFile(string filepath) {
-            string[] Blacklist = new string[] {
+            var Blacklist = new string[] {
                 "sce_sys",
                 "sce_module",
                 ".elf",
@@ -1813,14 +1818,15 @@ namespace libgp4 { // ver 1.26.100
         /// </summary>
         /// <returns> True If The Chunk Attribute Should Be Skipped. </returns>
         private bool SkipChunkAttributeForFile(string filepath) {
-            string[] Blacklist = new string[] {
+            var Blacklist = new string[] {
+                "keystone",
                 "sce_sys",
                 "sce_module",
                 ".bin"
             };
 
-            foreach(var file in Blacklist)
-                if(filepath.Contains(file))
+            foreach(var filter in Blacklist)
+                if(filepath.Contains(filter))
                     return true;
 
             return false;
