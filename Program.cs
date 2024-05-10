@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Xml;
-using System.Windows.Forms;
 using System.Collections.Generic;
 #pragma warning disable CS1591
 #pragma warning disable CS1587
@@ -14,7 +13,6 @@ using System.Collections.Generic;
 ///</summary>
 namespace libgp4 { // ver 1.26.100
 
-    // GP4Reader Class Start
     /// <summary>
     /// Small Class For Reading Data From .gp4 Projects.<br/><br/>
     /// Usage:<br/>
@@ -135,7 +133,7 @@ namespace libgp4 { // ver 1.26.100
         ///</summary>
         private static readonly bool[] enable_output_channel = new bool[] { true, true };
 
-        /// <summary> Backup Of The GP4's File Path For Various Methods
+        /// <summary> Backup Of The GP4's File Path For Various Methods.
         ///</summary>
         private readonly string gp4_path;
 
@@ -186,7 +184,7 @@ namespace libgp4 { // ver 1.26.100
         /// </returns>
         private static string CheckGP4Path(string GP4Path) {
 
-            // Absolute And Second Relative Path Checks || (In Case The User Excluded The First Backslash, idfk Why)
+            // Absolute And Second Relative Path Checks || (In Case The User Excluded The First Backslash, idfk, go away)
             if(!File.Exists(GP4Path))
 
                 // Bad Path
@@ -1010,9 +1008,9 @@ namespace libgp4 { // ver 1.26.100
     ///</summary>
     public partial class GP4Creator {
 
+
         /// <summary>
-        /// Initialize A New Instance Of The GP4Creator Class With Which To Build A New .gp4 Project With Various Settings.<br/>
-        /// [DOESN'T ACTUALLY DO THIS RN] Parses The param.sfo &amp; playgo-chunks.dat As Well As The Project Files/Folders Without Building The .gp4.
+        /// Initialize A New Instance Of The GP4Creator Class With Which To Build A New .gp4 Project With Various Settings.
         /// </summary>
         /// 
         /// <param name="GamedataFolder"> The Folder Containing The Gamedata To Create A .gp4 Project File For. </param>
@@ -1020,20 +1018,7 @@ namespace libgp4 { // ver 1.26.100
             gamedata_folder = GamedataFolder;
             Passcode = "00000000000000000000000000000000";
             Keystone = true;
-            // DO SOMETHING EXTRA (for your own app, decide whtehr to inculude itin the releas verison ;ater on)
         }
-
-
-        /// <summary>
-        /// Initialize A New Instance Of The GP4Creator Class With Which To Edit<br/>
-        /// Parses The param.sfo &amp; playgo-chunks.dat As Well As The Project Files/Folders Without Building The .gp4.
-        /// </summary>
-        /// 
-        public GP4Creator() {
-            Passcode = "00000000000000000000000000000000";
-            Keystone = true;
-        }
-
 
 
 
@@ -1652,11 +1637,13 @@ namespace libgp4 { // ver 1.26.100
 
 
             // Get The Paths Of All Project Files & Subdirectories In The Given Project Folder. 
-            var file_info = new DirectoryInfo(gamedata_folder).GetFiles(".", SearchOption.AllDirectories); //! why the period search pattern?
+            var file_info = new DirectoryInfo(gamedata_folder).GetFiles(".", SearchOption.AllDirectories); // The Period Is Needed To Search Every Single File/Folder Recursively, I Don't Even Know Why It Works That Way.
             file_paths = new string[file_info.Length];
 
-            for(var index = 0; index < file_info.Length; index++)
+            for(var index = 0; index < file_info.Length; ++index) {
+                DLog($"File Path: {file_info[index].FullName}");
                 file_paths[index] = file_info[index].FullName;
+            }
             //\\
 
 
@@ -1701,7 +1688,7 @@ namespace libgp4 { // ver 1.26.100
             WLog($"GP4 Creation Successful, File Saved As {GP4OutputPath}", false);
 #endif
         }
-        #endregion
+#endregion
 
 
 
