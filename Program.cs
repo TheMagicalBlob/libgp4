@@ -1006,7 +1006,6 @@ namespace libgp4 { // ver 1.29.154
     ///</summary>
     public partial class GP4Creator {
 
-
         /// <summary>
         /// Initialize A New Instance Of The GP4Creator Class With Which To Build A New .gp4 Project With Various Settings.
         /// </summary>
@@ -1018,6 +1017,361 @@ namespace libgp4 { // ver 1.29.154
             Keystone = true;
         }
 
+        private struct SfoParameters {
+            public SfoParameters(GP4Creator Mommy, FileStream sfo) {
+
+                app_ver = null;
+                version = null;
+                content_id = null;
+                title_id = null;
+                category = null;
+                storage_type = null;
+
+                using(sfo) {
+#if Log
+                    Mommy.WLog($"Parsing param.sfo File\nPath: {Mommy.gamedata_folder}\\sce_sys\\param.sfo", true);
+#endif
+
+                    var buffer = new byte[12];
+                    int[] ParamOffsets, DataTypes, ParamLengths;
+
+
+                    // Check PSF File Magic, + 4 Bytes To Skip Label Base Ptr
+                    sfo.Read(buffer, 0, 12);
+                    if(BitConverter.ToInt64(buffer, 0) != 1104986460160)
+                        throw new InvalidDataException($"File Magic For .sfo Wasn't Valid ([Expected: 00-50-53-46-01-01-00-00] != [Read: {BitConverter.ToString(buffer)}])");
+
+
+                    // Read Base Pointer For .sfo Parameters
+                    sfo.Read(buffer = new byte[4], 0, 4);
+                    var ParamVariablesPointer = BitConverter.ToInt32(buffer, 0);
+
+                    // Read PSF Parameter Count
+                    sfo.Read(buffer, 0, 4);
+                    var ParameterCount = BitConverter.ToInt32(buffer, 0);
+#if Log
+                    Mommy.WLog($"{ParameterCount} Parameters In .sfo", true);
+#endif
+
+
+                    // Initialize Arrays
+                    var SfoParams = new object[ParameterCount];
+                    var SfoParamLabels = new string[ParameterCount];
+                    DataTypes = new int[ParameterCount];
+                    ParamLengths = new int[ParameterCount];
+                    ParamOffsets = new int[ParameterCount];
+
+                    // Load Related Data For Each Parameter
+                    for(int i = 0; i < ParameterCount; ++i) { // Skip Param Offset Each Run
+
+                        sfo.Position += 3; // Skip Label Offset
+
+                        // Read And Check Data Type (4 = Int32, 2 = UTf8, 0 = Rsv4 )
+                        if((DataTypes[i] = sfo.ReadByte()) == 2 || DataTypes[i] == 4) {
+                            sfo.Read(buffer, 0, 4);
+                            ParamLengths[i] = BitConverter.ToInt32(buffer, 0);
+
+                            sfo.Position += 4;
+
+                            sfo.Read(buffer, 0, 4);
+                            ParamOffsets[i] = BitConverter.ToInt32(buffer, 0);
+                        }
+                    }
+
+
+                    // Load Parameter Labels
+                    for(int index = 0, @byte; index < ParameterCount; ++index) {
+                        var ByteList = new List<byte>();
+
+                        // Read To End Of Label
+                        for(; (@byte = sfo.ReadByte()) != 0; ByteList.Add((byte)@byte)) ;
+
+                        SfoParamLabels[index] = Encoding.UTF8.GetString(ByteList.ToArray());
+                    }
+
+
+                    // Load Parameter Values
+                    sfo.Position = ParamVariablesPointer;
+                    for(int i = 0; i < ParameterCount; ++i) {
+
+                        sfo.Position = ParamVariablesPointer + ParamOffsets[i];
+
+                        sfo.Read(buffer = new byte[ParamLengths[i]], 0, ParamLengths[i]);
+
+#if Log
+                        DLog($"Label: {SfoParamLabels[i]}");
+#endif
+
+                        // Datatype = string
+                        if(DataTypes[i] == 2) {
+                            if(ParamLengths[i] > 1 && buffer[ParamLengths[i] - 1] == 0)
+                                SfoParams[i] = Encoding.UTF8.GetString(buffer, 0, buffer.Length - 1);
+                            else
+                                SfoParams[i] = Encoding.UTF8.GetString(buffer);
+
+#if Log
+                            DLog($"Param: {SfoParams[i]}");
+#endif
+                        }
+
+                        // Datatype = Int32
+                        else if(DataTypes[i] == 4) {
+                            SfoParams[i] = BitConverter.ToInt32(buffer, 0);
+#if Log
+                            DLog($"Param: {SfoParams[i]}");
+#endif
+                        }
+
+#if Log
+                        DLog('\n');
+#endif
+                    }
+
+
+                    // Store Required Parameters
+                    for(int i = 0; i < SfoParamLabels.Length; ++i) {
+                        switch(SfoParamLabels[i]) {
+                            case "APP_VER":
+                                app_ver = (string)SfoParams[i];
+                                continue;
+                            case "CATEGORY":
+                                category = (string)SfoParams[i];
+                                continue;
+                            case "CONTENT_ID":
+                                content_id = (string)SfoParams[i];
+                                continue;
+                            case "VERSION":
+                                version = (string)SfoParams[i];
+                                continue;
+                            case "TITLE_ID":
+                                title_id = ((string)SfoParams[i]);
+                                continue;
+
+                            case "PUBTOOLINFO":
+#if GUIExtras
+                                // Store Some Extra Things I May Use In My .gp4 GUI
+                                Debug.WriteLine((string)SfoParams[i]);
+                                var arr = ((string)SfoParams[i]).Split(',');
+                                foreach(var v in arr)
+                                    Debug.WriteLine(v);
+                                Mommy.CreationDate = arr[0].Substring(arr[0].IndexOf('='));
+                                Mommy.SdkVersion = arr[1].Substring(arr[1].IndexOf('='));
+                                storage_type = arr[2].Substring(arr[2].IndexOf('=')); // (digital25 / bd50)
+                                //==================================================
+#else
+                                storage_type = ((string)SfoParams[i]).Split(',')[2]; // (digital25 / bd50)
+#endif
+                                continue;
+
+#if GUIExtras
+                            // Store Some Extra Things I May Use In My .gp4 GUI
+                            case "APP_TYPE":
+                                Mommy.AppType = (int)SfoParams[i];
+                                continue;
+
+                            case "TITLE":
+                                (Mommy.AppTitles = new List<string>()).Add(Mommy.AppTitle = (string)SfoParams[i]);
+                                continue;
+
+                            default:
+                                if(SfoParamLabels[i].Contains("Title_"))
+                                    Mommy.AppTitles.Add((string)SfoParams[i]);
+                                continue;
+
+                            case "TARGET_APP_VER":
+                                Mommy.TargetAppVer = ((string)SfoParams[i]);
+                                continue;
+#endif
+                        }
+                    }
+                }
+            }
+
+
+            public string
+                app_ver,     // App Patch Version
+                version,     // Remaster Ver
+                content_id,  // Content Id From sce_sys/param.sfo
+                title_id,    // Application's Title Id
+                category,    // Category Of The PS4 Application (gd / gp)
+                storage_type // Storage Type For The Package (25gb/50gb)
+            ;
+        }
+
+        private struct PlaygoData {
+
+            public PlaygoData(GP4Creator Mommy, FileStream playgo) {
+                chunk_count = 0;
+                scenario_count = 0;
+                default_scenario_id = 0;
+
+                scenario_types = null;
+                scenario_chunk_range = null;
+                initial_chunk_count = null;
+
+                playgo_content_id = null;
+
+                chunk_labels = null;
+                scenario_labels = null;
+
+
+                using(playgo) {
+#if Log
+                    Mommy.WLog($"Parsing playgo-chunk.dat File\nPath: {Mommy.gamedata_folder}\\sce_sys\\playgo-chunk.dat", true);
+#endif
+
+                    var buffer = new byte[4];
+
+
+
+                    // Check playgo-chunk.dat File Magic
+                    playgo.Read(buffer, 0, 4);
+                    if(BitConverter.ToInt32(buffer, 0) != 1869048944)
+                        throw new InvalidDataException($"File Magic For .dat Wasn't Valid ([Expected: 70-6C-67-6F] != [Read: {BitConverter.ToString(buffer)}])");
+
+
+                    // Read Chunk Count
+                    playgo.Position = 0x0A;
+                    chunk_count = (byte)playgo.ReadByte();
+                    chunk_labels = new string[chunk_count];
+#if Log
+                    Mommy.WLog($"{chunk_count} Chunks in Project File", true);
+#endif
+
+
+                    // Read Scenario Count, An Initialize Related Arrays
+                    playgo.Position = 0x0E;
+                    scenario_count = (byte)playgo.ReadByte();
+                    scenario_types = new int[scenario_count];
+                    scenario_labels = new string[scenario_count];
+                    initial_chunk_count = new int[scenario_count];
+                    scenario_chunk_range = new int[scenario_count];
+#if Log
+                    Mommy.WLog($"{scenario_count} Scenarios in Project File", true);
+#endif
+
+
+                    // Read Default Scenario Id
+                    playgo.Position = 0x14;
+                    default_scenario_id = (byte)playgo.ReadByte();
+
+
+                    // Read Content ID
+                    buffer = new byte[36];
+                    playgo.Position = 0x40;
+                    playgo.Read(buffer, 0, 36);
+                    playgo_content_id = Encoding.UTF8.GetString(buffer);
+
+
+                    // Read Chunk Label Start Address From Pointer
+                    buffer = new byte[4];
+                    playgo.Position = 0xD0;
+                    playgo.Read(buffer, 0, 4);
+                    var chunk_label_pointer = BitConverter.ToInt32(buffer, 0);
+
+
+                    // Read Length Of Chunk Label Byte Array
+                    playgo.Position = 0xD4;
+                    playgo.Read(buffer, 0, 4);
+                    var chunk_label_array_length = BitConverter.ToInt32(buffer, 0);
+
+
+                    // Load Scenario(s)
+                    playgo.Position = 0xE0;
+                    playgo.Read(buffer, 0, 4);
+                    var scenarioPointer = BitConverter.ToInt32(buffer, 0);
+                    for(short index = 0; index < scenario_count; index++, scenarioPointer += 0x20) {
+
+                        // Read Scenario Type
+                        playgo.Position = scenarioPointer;
+                        scenario_types[index] = (byte)playgo.ReadByte();
+
+                        // Read Scenario initial_chunk_count
+                        playgo.Position = (scenarioPointer + 0x14);
+                        playgo.Read(buffer, 2, 2);
+                        initial_chunk_count[index] = BitConverter.ToInt16(buffer, 2);
+
+                        playgo.Read(buffer, 2, 2);
+                        scenario_chunk_range[index] = BitConverter.ToInt16(buffer, 2);
+                    }
+
+#if Log
+                    Mommy.WLog($"Default Scenario Type = {scenario_types[default_scenario_id]}", true);
+#endif
+
+                    // Load Scenario Label Array Byte Length
+                    buffer = new byte[2];
+                    playgo.Position = 0xF4;
+                    playgo.Read(buffer, 0, 2);
+                    var scenario_label_array_length = BitConverter.ToInt16(buffer, 0);
+
+
+                    // Load Scenario Label Pointer
+                    playgo.Position = 0xF0;
+                    buffer = new byte[4];
+                    playgo.Read(buffer, 0, 4);
+                    var scenario_label_array_pointer = BitConverter.ToInt32(buffer, 0);
+
+
+                    // Load Scenario Labels
+                    playgo.Position = scenario_label_array_pointer;
+                    buffer = new byte[scenario_label_array_length];
+                    playgo.Read(buffer, 0, buffer.Length);
+                    ConvertbufferToStringArray(buffer, scenario_labels);
+
+
+                    // Load Chunk Labels
+                    buffer = new byte[chunk_label_array_length];
+                    playgo.Position = chunk_label_pointer;
+                    playgo.Read(buffer, 0, buffer.Length);
+                    ConvertbufferToStringArray(buffer, chunk_labels);
+
+
+#if Log
+                    DLog('\n');
+#endif
+                }
+            }
+
+
+
+            void ConvertbufferToStringArray(byte[] buffer, string[] StringArray) {
+                int byteIndex = 0, index;
+                StringBuilder Builder;
+
+                for(index = 0; index < StringArray.Length; index++) {
+                    Builder = new StringBuilder();
+
+                    while(buffer[byteIndex] != 0)
+                        Builder.Append(Encoding.UTF8.GetString(new byte[] { buffer[byteIndex++] })); // Just Take A Byte, You Fussy Prick
+
+                    byteIndex++;
+                    StringArray[index] = Builder.ToString();
+                }
+            }
+
+
+            public int
+                chunk_count,    // Amount Of Chunks In The Application
+                scenario_count, // Amount Of Scenarios In The Application
+                default_scenario_id // Id/Index Of The Application's Default Scenario
+            ;
+
+            public int[]
+                scenario_types,       // The Types Of Each Scenario (SP / MP)
+                scenario_chunk_range, // Array Of Chunk Ranges For Each Scenario
+                initial_chunk_count   // The Initial Chunk Count Of Each Scenario
+            ;
+
+            public string
+                playgo_content_id // Content Id From sce_sys/playgo-chunk.dat To Check Against Content Id In sce_sys/param.sfo
+            ;
+
+            public string[]
+                chunk_labels,   // Array Of All Chunk Names
+                scenario_labels // Array Of All Scenario Names
+            ;
+        }
 
 
         ////////////////////\\\\\\\\\\\\\\\\\\
@@ -1128,7 +1482,7 @@ namespace libgp4 { // ver 1.29.154
 
         /// <summary> Console Logging Method.
         ///</summary>
-        private string DLog(object o) {
+        private static string DLog(object o) {
 #if DEBUG
             try { Debug.WriteLine(o); }
             catch(Exception) { }
@@ -1152,7 +1506,7 @@ namespace libgp4 { // ver 1.29.154
                 Errors += $"Could Not Find The Provided Game Data Directory.\n \nPath Provided: \"{gamedata_folder}\"\n\n"; // Spaced Out The First Double-line-break To Avoid Counting This Error As Two
 
             if(playgo_content_id != content_id)
-                Errors += $"Content ID Mismatch Detected, Process Aborted\n[playgo-chunks.dat: {playgo_content_id} != param.sfo: {content_id}]\n\n";
+                Errors += $"Content ID Mismatch Detected, Process Aborted\n[playgo-chunk.dat: {playgo_content_id} != param.sfo: {content_id}]\n\n";
 
 
             // Catch Conflicting Project Type Information
