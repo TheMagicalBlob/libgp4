@@ -156,36 +156,11 @@ namespace libgp4 {
             // With The Time Left As 00:00, But Imma Just Add The Time. It Doesn't Break Anything).
             var gp4_timestamp = DateTime.Now.GetDateTimeFormats()[78];
 
-            int
-                chunk_count,    // Amount Of Chunks In The Application
-                scenario_count, // Amount Of Scenarios In The Application
-                default_scenario_id // Id/Index Of The Application's Default Scenario
-            ;
-
-            int[]
-                scenario_types,       // The Types Of Each Scenario (SP / MP)
-                scenario_chunk_range, // Array Of Chunk Ranges For Each Scenario
-                initial_chunk_count   // The Initial Chunk Count Of Each Scenario
-            ;
-
-            string
-                app_ver = null,     // App Patch Version
-                version = null,     // Remaster Ver
-                playgo_content_id = null, // Content Id From sce_sys/playgo-chunk.dat To Check Against Content Id In sce_sys/param.sfo
-                content_id = null,  // Content Id From sce_sys/param.sfo
-                title_id = null,    // Application's Title Id
-                category = null,    // Category Of The PS4 Application (gd / gp)
-                storage_type = null // Storage Type For The Package (25gb/50gb)
-            ;
-
-            string[]
-                file_paths,     // Array Of All Files In The Project Folder (Excluding Blacklisted Files/Directories)
-                chunk_labels,   // Array Of All Chunk Names
-                scenario_labels // Array Of All Scenario Names
-            ;
-
             SfoParameters SfoParameters;
             PlaygoData PlaygoData;
+            
+            string[] file_paths; // Array Of All Files In The Project Folder (Excluding Blacklisted Files/Directories)
+
 
 
             /* Parse playgo-chunk.dat For Required .gp4 Variables.
@@ -238,7 +213,7 @@ namespace libgp4 {
 
             // Check The Parsed Data For Any Potential Errors Before Building The .gp4 With It
             if(VerifyIntegrity) {
-                VerifyGP4(gamedata_folder, PlaygoData.playgo_content_id, SfoParameters.content_id, SfoParameters.category, SfoParameters.app_ver);
+                VerifyGP4(gamedata_folder, PlaygoData.playgo_content_id, SfoParameters);
             }
 
 
@@ -248,16 +223,12 @@ namespace libgp4 {
             gp4 = new XmlDocument();
             var base_elements =
                 CreateBaseElements(
-                    category,
-                    gp4_timestamp,
-                    content_id,
+                    SfoParameters,
+                    PlaygoData,
+                    gp4,
                     Passcode,
                     SourcePkgPath,
-                    app_ver,
-                    version,
-                    PlaygoData.chunk_count,
-                    PlaygoData.scenario_count,
-                    gp4
+                    gp4_timestamp
             );
 
             // Create The Actual .go4 Structure
@@ -271,9 +242,9 @@ namespace libgp4 {
                 volume_ts: base_elements[4],
                 package: base_elements[5],
                 chunk_info: base_elements[6],
-                files: CreateFilesElement(extra_files, file_paths, PlaygoData.chunk_count, gamedata_folder, gp4),
-                chunks: CreateChunksElement(PlaygoData.chunk_labels, PlaygoData.chunk_count, gp4),
-                scenarios: CreateScenariosElement(PlaygoData.default_scenario_id, PlaygoData.scenario_count, PlaygoData.initial_chunk_count, PlaygoData.scenario_types, PlaygoData.scenario_labels, PlaygoData.scenario_chunk_range, gp4),
+                files: CreateFilesElement(PlaygoData.chunk_count, extra_files, file_paths, gamedata_folder, gp4),
+                chunks: CreateChunksElement(PlaygoData, gp4),
+                scenarios: CreateScenariosElement(PlaygoData, gp4),
                 rootdir: CreateRootDirectoryElement(gamedata_folder, gp4)
             );
 

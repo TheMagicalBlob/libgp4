@@ -23,7 +23,7 @@ namespace libgp4 {
         /// - package <br/>
         /// - chunk_info <br/>
         /// </summary>
-        public XmlNode[] CreateBaseElements(string category, string timestamp, string content_id, string passcode, string base_package, string app_ver, string version, int chunk_count, int scenario_count, XmlDocument gp4) {
+        private XmlNode[] CreateBaseElements(SfoParameters sfo_data, PlaygoData playgo_data, XmlDocument gp4, string passcode, string base_package, string gp4_timestamp) {
             var psproject = gp4.CreateElement("psproject");
             psproject.SetAttribute("fmt", "gp4");
             psproject.SetAttribute("version", "1000");
@@ -31,26 +31,26 @@ namespace libgp4 {
             var volume = gp4.CreateElement("volume");
 
             var volume_type = gp4.CreateElement("volume_type");
-            volume_type.InnerText = $"pkg_{((category == "gd") ? "ps4_app" : "ps4_patch")}";
+            volume_type.InnerText = $"pkg_{((sfo_data.category == "gd") ? "ps4_app" : "ps4_patch")}";
 
             var volume_id = gp4.CreateElement("volume_id");
             volume_id.InnerText = "PS4VOLUME";
 
             var volume_ts = gp4.CreateElement("volume_ts");
-            volume_ts.InnerText = timestamp;
+            volume_ts.InnerText = gp4_timestamp;
 
             var package = gp4.CreateElement("package");
-            package.SetAttribute("content_id", content_id);
+            package.SetAttribute("content_id", sfo_data.content_id);
             package.SetAttribute("passcode", passcode);
-            package.SetAttribute("storage_type", ((category == "gp") ? "digital25" : "digital50"));
+            package.SetAttribute("storage_type", ((sfo_data.category == "gp") ? "digital25" : "digital50"));
             package.SetAttribute("app_type", "full");
 
-            if(category == "gp")
-                package.SetAttribute("app_path", base_package ?? $"{content_id}-A{app_ver}-V{version}.pkg");
+            if(sfo_data.category == "gp")
+                package.SetAttribute("app_path", base_package ?? $"{sfo_data.content_id}-A{sfo_data.app_ver}-V{sfo_data.version}.pkg");
 
             var chunk_info = gp4.CreateElement("chunk_info");
-            chunk_info.SetAttribute("chunk_count", $"{chunk_count}");
-            chunk_info.SetAttribute("scenario_count", $"{scenario_count}");
+            chunk_info.SetAttribute("chunk_count", $"{playgo_data.chunk_count}");
+            chunk_info.SetAttribute("scenario_count", $"{playgo_data.scenario_count}");
 
             return new XmlNode[] { psproject, volume, volume_type, volume_id, volume_ts, package, chunk_info };
         }
@@ -59,7 +59,7 @@ namespace libgp4 {
         /// <summary>
         /// Create "files" Element Containing File Destination And Source Paths, Along With Whether To Enable PFS Compression.
         /// </summary>
-        private XmlNode CreateFilesElement(string[][] extra_files, string[] file_paths, int chunk_count, string gamedata_folder, XmlDocument gp4) {
+        private XmlNode CreateFilesElement(int chunk_count, string[][] extra_files, string[] file_paths, string gamedata_folder, XmlDocument gp4) {
             var files = gp4.CreateElement("files");
 
             for(var index = 0; index < file_paths.Length; index++) {
@@ -137,17 +137,17 @@ namespace libgp4 {
 
         /// <summary> Create "chunks" Element
         /// </summary>
-        private XmlNode CreateChunksElement(string[] chunk_labels, int chunk_count, XmlDocument gp4) {
+        private XmlNode CreateChunksElement(PlaygoData data, XmlDocument gp4) {
             var chunks = gp4.CreateElement("chunks");
 
-            for(int chunk_id = 0; chunk_id < chunk_count; chunk_id++) {
+            for(int chunk_id = 0; chunk_id < data.chunk_count; chunk_id++) {
                 var chunk = gp4.CreateElement("chunk");
                 chunk.SetAttribute("id", $"{chunk_id}");
 
-                if(chunk_labels[chunk_id] == "") //  I Hope This Fix Works For Every Game...
+                if(data.chunk_labels[chunk_id] == "") //  I Hope This Fix Works For Every Game...
                     chunk.SetAttribute("label", $"Chunk #{chunk_id}");
                 else
-                    chunk.SetAttribute("label", $"{chunk_labels[chunk_id]}");
+                    chunk.SetAttribute("label", $"{data.chunk_labels[chunk_id]}");
                 chunks.AppendChild(chunk);
             }
             return chunks;
@@ -155,20 +155,20 @@ namespace libgp4 {
 
         /// <summary> Create "scenarios" Element
         /// </summary>
-        private XmlNode CreateScenariosElement(int default_scenario_id, int scenario_count, int[] initial_chunk_count, int[] scenario_types, string[] scenario_labels, int[] scenario_chunk_range, XmlDocument gp4) {
+        private XmlNode CreateScenariosElement(PlaygoData data, XmlDocument gp4) {
             var scenarios = gp4.CreateElement("scenarios");
-            scenarios.SetAttribute("default_id", $"{default_scenario_id}");
+            scenarios.SetAttribute("default_id", $"{data.default_scenario_id}");
 
-            for(var index = 0; index < scenario_count; index++) {
+            for(var index = 0; index < data.scenario_count; index++) {
                 var scenario = gp4.CreateElement("scenario");
 
                 scenario.SetAttribute("id", $"{index}");
-                scenario.SetAttribute("type", $"{(scenario_types[index] == 1 ? "sp" : "mp")}");
-                scenario.SetAttribute("initial_chunk_count", $"{initial_chunk_count[index]}");
-                scenario.SetAttribute("label", $"{scenario_labels[index]}");
+                scenario.SetAttribute("type", $"{(data.scenario_types[index] == 1 ? "sp" : "mp")}");
+                scenario.SetAttribute("initial_chunk_count", $"{data.initial_chunk_count[index]}");
+                scenario.SetAttribute("label", $"{data.scenario_labels[index]}");
 
-                if(scenario_chunk_range[index] - 1 != 0)
-                    scenario.InnerText = $"0-{scenario_chunk_range[index] - 1}";
+                if(data.scenario_chunk_range[index] - 1 != 0)
+                    scenario.InnerText = $"0-{data.scenario_chunk_range[index] - 1}";
 
                 else scenario.InnerText = "0";
 
@@ -200,7 +200,7 @@ namespace libgp4 {
             psproject.AppendChild(files);
             psproject.AppendChild(rootdir);
 
-            gp4.AppendChild(gp4.CreateComment("gengp4.exe Alternative. {//! add a link to the library repository!!!}")); //!
+            gp4.AppendChild(gp4.CreateComment("gengp4.exe Alternative. {//! add a link to the library repository once you change it to public!!!}")); //!
         }
 
 

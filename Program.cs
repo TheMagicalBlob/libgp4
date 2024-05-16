@@ -1018,6 +1018,16 @@ namespace libgp4 { // ver 1.29.154
         }
 
         private struct SfoParameters {
+
+            public string
+                app_ver,     // App Patch Version
+                version,     // Remaster Ver
+                content_id,  // Content Id From sce_sys/param.sfo
+                title_id,    // Application's Title Id
+                category,    // Category Of The PS4 Application (gd / gp)
+                storage_type // Storage Type For The Package (25gb/50gb)
+            ;
+
             public SfoParameters(GP4Creator Mommy, FileStream sfo) {
 
                 app_ver = null;
@@ -1035,11 +1045,11 @@ namespace libgp4 { // ver 1.29.154
                     var buffer = new byte[12];
                     int[] ParamOffsets, DataTypes, ParamLengths;
 
-
                     // Check PSF File Magic, + 4 Bytes To Skip Label Base Ptr
                     sfo.Read(buffer, 0, 12);
                     if(BitConverter.ToInt64(buffer, 0) != 1104986460160)
                         throw new InvalidDataException($"File Magic For .sfo Wasn't Valid ([Expected: 00-50-53-46-01-01-00-00] != [Read: {BitConverter.ToString(buffer)}])");
+
 
 
                     // Read Base Pointer For .sfo Parameters
@@ -1186,19 +1196,30 @@ namespace libgp4 { // ver 1.29.154
                     }
                 }
             }
-
-
-            public string
-                app_ver,     // App Patch Version
-                version,     // Remaster Ver
-                content_id,  // Content Id From sce_sys/param.sfo
-                title_id,    // Application's Title Id
-                category,    // Category Of The PS4 Application (gd / gp)
-                storage_type // Storage Type For The Package (25gb/50gb)
-            ;
         }
 
         private struct PlaygoData {
+            
+            public int
+                chunk_count,    // Amount Of Chunks In The Application
+                scenario_count, // Amount Of Scenarios In The Application
+                default_scenario_id // Id/Index Of The Application's Default Scenario
+            ;
+
+            public int[]
+                scenario_types,       // The Types Of Each Scenario (SP / MP)
+                scenario_chunk_range, // Array Of Chunk Ranges For Each Scenario
+                initial_chunk_count   // The Initial Chunk Count Of Each Scenario
+            ;
+
+            public string
+                playgo_content_id // Content Id From sce_sys/playgo-chunk.dat To Check Against Content Id In sce_sys/param.sfo
+            ;
+
+            public string[]
+                chunk_labels,   // Array Of All Chunk Names
+                scenario_labels // Array Of All Scenario Names
+            ;
 
             public PlaygoData(GP4Creator Mommy, FileStream playgo) {
                 chunk_count = 0;
@@ -1219,7 +1240,6 @@ namespace libgp4 { // ver 1.29.154
 #if Log
                     Mommy.WLog($"Parsing playgo-chunk.dat File\nPath: {Mommy.gamedata_folder}\\sce_sys\\playgo-chunk.dat", true);
 #endif
-
                     var buffer = new byte[4];
 
 
@@ -1334,7 +1354,6 @@ namespace libgp4 { // ver 1.29.154
             }
 
 
-
             void ConvertbufferToStringArray(byte[] buffer, string[] StringArray) {
                 int byteIndex = 0, index;
                 StringBuilder Builder;
@@ -1350,27 +1369,6 @@ namespace libgp4 { // ver 1.29.154
                 }
             }
 
-
-            public int
-                chunk_count,    // Amount Of Chunks In The Application
-                scenario_count, // Amount Of Scenarios In The Application
-                default_scenario_id // Id/Index Of The Application's Default Scenario
-            ;
-
-            public int[]
-                scenario_types,       // The Types Of Each Scenario (SP / MP)
-                scenario_chunk_range, // Array Of Chunk Ranges For Each Scenario
-                initial_chunk_count   // The Initial Chunk Count Of Each Scenario
-            ;
-
-            public string
-                playgo_content_id // Content Id From sce_sys/playgo-chunk.dat To Check Against Content Id In sce_sys/param.sfo
-            ;
-
-            public string[]
-                chunk_labels,   // Array Of All Chunk Names
-                scenario_labels // Array Of All Scenario Names
-            ;
         }
 
 
@@ -1498,23 +1496,23 @@ namespace libgp4 { // ver 1.29.154
 
         /// <summary> Check Various Parts Of The Parsed gp4 Parameters To Try And Find Any Possible Errors In The Project Files/Structure.
         ///</summary>
-        private void VerifyGP4(string gamedata_folder, string playgo_content_id, string content_id, string category, string app_ver) {
+        private void VerifyGP4(string gamedata_folder, string playgo_content_id, SfoParameters data) {
             var Errors = string.Empty;
             int ErrorCount;
 
             if(!Directory.Exists(gamedata_folder))
                 Errors += $"Could Not Find The Provided Game Data Directory.\n \nPath Provided: \"{gamedata_folder}\"\n\n"; // Spaced Out The First Double-line-break To Avoid Counting This Error As Two
 
-            if(playgo_content_id != content_id)
-                Errors += $"Content ID Mismatch Detected, Process Aborted\n[playgo-chunk.dat: {playgo_content_id} != param.sfo: {content_id}]\n\n";
+            if(playgo_content_id != data.content_id)
+                Errors += $"Content ID Mismatch Detected, Process Aborted\n[playgo-chunk.dat: {playgo_content_id} != param.sfo: {data.content_id}]\n\n";
 
 
             // Catch Conflicting Project Type Information
-            if(category == "gp" && app_ver == "01.00")
+            if(data.category == "gp" && data.app_ver == "01.00")
                 Errors += $"Invalid App Version For Patch Package. App Version Must Be Passed 1.00.\n\n";
 
-            else if(category == "gd" && app_ver != "01.00")
-                Errors += $"Invalid App Version For Application Package. App Version Was {app_ver}, Must Be 1.00.\n\n";
+            else if(data.category == "gd" && data.app_ver != "01.00")
+                Errors += $"Invalid App Version For Application Package. App Version Was {data.app_ver}, Must Be 1.00.\n\n";
 
 
             if(Passcode.Length < 32)
