@@ -221,7 +221,7 @@ namespace libgp4 {
 
             // Create Base .gp4 Elements (Up To Chunk/Scenario Data)
             gp4 = new XmlDocument();
-            var base_elements =
+            var basic_elements =
                 CreateBaseElements(
                     SfoParameters,
                     PlaygoData,
@@ -234,18 +234,11 @@ namespace libgp4 {
             // Create The Actual .go4 Structure
             BuildGp4Elements(
                 gp4,
-                gp4.CreateXmlDeclaration("1.1", "utf-8", "yes"),
-                psproject: base_elements[0],
-                volume: base_elements[1],
-                volume_type: base_elements[2],
-                volume_id: base_elements[3],
-                volume_ts: base_elements[4],
-                package: base_elements[5],
-                chunk_info: base_elements[6],
-                files: CreateFilesElement(PlaygoData.chunk_count, extra_files, file_paths, gamedata_folder, gp4),
-                chunks: CreateChunksElement(PlaygoData, gp4),
-                scenarios: CreateScenariosElement(PlaygoData, gp4),
-                rootdir: CreateRootDirectoryElement(gamedata_folder, gp4)
+                basic_elements,
+                CreateChunksElement(PlaygoData, gp4),
+                CreateScenariosElement(PlaygoData, gp4),
+                CreateFilesElement(PlaygoData.chunk_count, extra_files, file_paths, gamedata_folder, gp4),
+                CreateRootDirectoryElement(gamedata_folder, gp4)
             );
 
 

@@ -13,7 +13,7 @@ namespace libgp4 {
         #region GP4 ELEMENT CREATION
 
         /// <summary>
-        ///  Create Base .gp4 Elements (Up To Chunk/Scenario Data).
+        ///  Create Base .gp4 Elements (Up To The Start Of The chunk_info Node).
         ///   <br/><br/>
         /// - psproject <br/>
         /// - volume <br/>
@@ -24,33 +24,44 @@ namespace libgp4 {
         /// - chunk_info <br/>
         /// </summary>
         private XmlNode[] CreateBaseElements(SfoParameters sfo_data, PlaygoData playgo_data, XmlDocument gp4, string passcode, string base_package, string gp4_timestamp) {
+           
             var psproject = gp4.CreateElement("psproject");
-            psproject.SetAttribute("fmt", "gp4");
-            psproject.SetAttribute("version", "1000");
+                psproject.SetAttribute("fmt", "gp4");
+                psproject.SetAttribute("version", "1000");
+
 
             var volume = gp4.CreateElement("volume");
+            
+                var volume_type = gp4.CreateElement("volume_type");
+                volume_type.InnerText = $"pkg_{((sfo_data.category == "gd") ? "ps4_app" : "ps4_patch")}";
 
-            var volume_type = gp4.CreateElement("volume_type");
-            volume_type.InnerText = $"pkg_{((sfo_data.category == "gd") ? "ps4_app" : "ps4_patch")}";
+                var volume_id = gp4.CreateElement("volume_id");
+                volume_id.InnerText = "PS4VOLUME";
 
-            var volume_id = gp4.CreateElement("volume_id");
-            volume_id.InnerText = "PS4VOLUME";
+                var volume_ts = gp4.CreateElement("volume_ts");
+                volume_ts.InnerText = gp4_timestamp;
 
-            var volume_ts = gp4.CreateElement("volume_ts");
-            volume_ts.InnerText = gp4_timestamp;
 
             var package = gp4.CreateElement("package");
-            package.SetAttribute("content_id", sfo_data.content_id);
-            package.SetAttribute("passcode", passcode);
-            package.SetAttribute("storage_type", ((sfo_data.category == "gp") ? "digital25" : "digital50"));
-            package.SetAttribute("app_type", "full");
+                package.SetAttribute("content_id", sfo_data.content_id);
+                package.SetAttribute("passcode", passcode);
+                package.SetAttribute("storage_type", ((sfo_data.category == "gp") ? "digital25" : "digital50"));
+                package.SetAttribute("app_type", "full");
+
 
             if(sfo_data.category == "gp")
                 package.SetAttribute("app_path", base_package ?? $"{sfo_data.content_id}-A{sfo_data.app_ver}-V{sfo_data.version}.pkg");
+#if Log
+            else if(sfo_data.category == "gd" && base_package != null) {
+                var str = $"WARNING: A Base Game Package Path Was Given, But The Package Category Was Set To Full Game.\n(Base Package: {base_package})";
+                DLog(str);
+                WLog(str, true);
+            }
+#endif
 
             var chunk_info = gp4.CreateElement("chunk_info");
-            chunk_info.SetAttribute("chunk_count", $"{playgo_data.chunk_count}");
-            chunk_info.SetAttribute("scenario_count", $"{playgo_data.scenario_count}");
+                chunk_info.SetAttribute("chunk_count", $"{playgo_data.chunk_count}");
+                chunk_info.SetAttribute("scenario_count", $"{playgo_data.scenario_count}");
 
             return new XmlNode[] { psproject, volume, volume_type, volume_id, volume_ts, package, chunk_info };
         }
@@ -181,26 +192,24 @@ namespace libgp4 {
         /// <summary> Build .gp4 Structure And Save To File
         ///</summary>
         /// <returns> Time Taken For Build Process </returns>
-        private void BuildGp4Elements(XmlDocument gp4, XmlDeclaration gp4_declaration, XmlNode psproject, XmlNode volume, XmlNode volume_type, XmlNode volume_id, XmlNode scenarios, XmlNode volume_ts, XmlNode package, XmlNode chunk_info, XmlNode files, XmlNode rootdir, XmlNode chunks) {
+        private void BuildGp4Elements(XmlDocument gp4_project, XmlNode[] base_elements, XmlNode chunks, XmlNode scenarios, XmlNode files, XmlNode rootdir) {
 
-            gp4.AppendChild(gp4_declaration);
-            gp4.AppendChild(psproject);
+            gp4_project.AppendChild(gp4.CreateXmlDeclaration("1.1", "utf-8", "yes"));
+            gp4_project.AppendChild(base_elements[0]);      // psproject
+            
+            base_elements[0].AppendChild(base_elements[1]); // volume
+            base_elements[1].AppendChild(base_elements[2]); // volume_type
+            base_elements[1].AppendChild(base_elements[3]); // volume_id
+            base_elements[1].AppendChild(base_elements[4]); // volume_ts
+            base_elements[1].AppendChild(base_elements[5]); // package
+            base_elements[1].AppendChild(base_elements[6]); // chunk_info
 
-            psproject.AppendChild(volume);
+            base_elements[6].AppendChild(chunks);
+            base_elements[6].AppendChild(scenarios);
+            base_elements[0].AppendChild(files);
+            base_elements[0].AppendChild(rootdir);
 
-            volume.AppendChild(volume_type);
-            volume.AppendChild(volume_id);
-            volume.AppendChild(volume_ts);
-            volume.AppendChild(package);
-            volume.AppendChild(chunk_info);
-
-            chunk_info.AppendChild(chunks);
-            chunk_info.AppendChild(scenarios);
-
-            psproject.AppendChild(files);
-            psproject.AppendChild(rootdir);
-
-            gp4.AppendChild(gp4.CreateComment("gengp4.exe Alternative. {//! add a link to the library repository once you change it to public!!!}")); //!
+            gp4_project.AppendChild(gp4_project.CreateComment("gengp4.exe Alternative. {//! add a link to the library repository once you change it to public!!!}")); //!
         }
 
 
