@@ -1012,12 +1012,26 @@ namespace libgp4 { // ver 1.29.154
         /// 
         /// <param name="GamedataFolder"> The Folder Containing The Gamedata To Create A .gp4 Project File For. </param>
         public GP4Creator(string GamedataFolder) {
-            gamedata_folder = GamedataFolder;
+            Passcode = "00000000000000000000000000000000";
+            Keystone = true;
+
+            this.GamedataFolder = GamedataFolder;
+
+            // Parse playgo-chunk.dat For Required .gp4 Variables.
+            PlaygoParams = new PlaygoParameters(this, GamedataFolder);
+
+            // Parse param.sfo For Required .gp4 Variables.
+            SfoParams = new SfoParameters(this, GamedataFolder);
+        }
+        
+        public GP4Creator() {
             Passcode = "00000000000000000000000000000000";
             Keystone = true;
         }
 
-        private struct SfoParameters {
+
+
+        private class SfoParameters {
 
             public string
                 app_ver,     // App Patch Version
@@ -1028,7 +1042,20 @@ namespace libgp4 { // ver 1.29.154
                 storage_type // Storage Type For The Package (25gb/50gb)
             ;
 
-            public SfoParameters(GP4Creator Mommy, FileStream sfo) {
+
+            /* Parse param.sfo For Required .gp4 Variables.
+            | =======================
+            | Sets The Following Values:
+            |
+            | parameter_labels
+            | app_ver
+            | version
+            | category
+            | title_id
+            | content_id (Read Again For Error Checking)
+            |
+            | ========================= | */
+            public SfoParameters(GP4Creator Mommy, string gamedata_folder) {
 
                 app_ver = null;
                 version = null;
@@ -1037,9 +1064,9 @@ namespace libgp4 { // ver 1.29.154
                 category = null;
                 storage_type = null;
 
-                using(sfo) {
+                using(var sfo = File.OpenRead($@"{gamedata_folder}\sce_sys\param.sfo")) {
 #if Log
-                    Mommy.WLog($"Parsing param.sfo File\nPath: {Mommy.gamedata_folder}\\sce_sys\\param.sfo", true);
+                    Mommy.WLog($"Parsing param.sfo File\nPath: {gamedata_folder}\\sce_sys\\param.sfo", true);
 #endif
 
                     var buffer = new byte[12];
@@ -1198,7 +1225,7 @@ namespace libgp4 { // ver 1.29.154
             }
         }
 
-        private struct PlaygoData {
+        private class PlaygoParameters {
             
             public int
                 chunk_count,    // Amount Of Chunks In The Application
@@ -1221,7 +1248,23 @@ namespace libgp4 { // ver 1.29.154
                 scenario_labels // Array Of All Scenario Names
             ;
 
-            public PlaygoData(GP4Creator Mommy, FileStream playgo) {
+
+            /* Parse playgo-chunk.dat For Required .gp4 Variables.
+            | ========================= |
+            | Sets The Following Values:
+            |
+            | chunk_count
+            | chunk_labels
+            | scenario_count
+            | scenario_types
+            | scenario_labels
+            | initial_chunk_count
+            | scenario_chunk_range
+            | default_id
+            | content_id
+            | 
+            | ========================= | */
+            public PlaygoParameters(GP4Creator Mommy, string gamedata_folder) {
                 chunk_count = 0;
                 scenario_count = 0;
                 default_scenario_id = 0;
@@ -1236,9 +1279,9 @@ namespace libgp4 { // ver 1.29.154
                 scenario_labels = null;
 
 
-                using(playgo) {
+                using(var playgo = File.OpenRead($@"{gamedata_folder}\sce_sys\playgo-chunk.dat")) {
 #if Log
-                    Mommy.WLog($"Parsing playgo-chunk.dat File\nPath: {Mommy.gamedata_folder}\\sce_sys\\playgo-chunk.dat", true);
+                    Mommy.WLog($"Parsing playgo-chunk.dat File\nPath: {gamedata_folder}\\sce_sys\\playgo-chunk.dat", true);
 #endif
                     var buffer = new byte[4];
 
@@ -1377,9 +1420,12 @@ namespace libgp4 { // ver 1.29.154
         ////////////////////\\\\\\\\\\\\\\\\\\
         #region Internal Variables
 
-        /// <summary> Root Gamedata Directory To Be Parsed. (Should Contain At Least An Executable And sce_sys Folder)
+        private SfoParameters SfoParams;
+        private PlaygoParameters PlaygoParams;
+
+        /// <summary> Root Path Of . (Should Contain At Least An Executable And sce_sys Folder)
         ///</summary>
-        private string gamedata_folder;
+        public string GamedataFolder { private get => GamedataFolder.TrimEnd('\\', /* <-Just In Case-> */  '/'); set { SfoParams = new SfoParameters(this, GamedataFolder); } }
 
         /// <summary> Names Of Files That Are Always To Be Excluded From .gp4 Projects By Default.
         ///</summary>
@@ -1488,6 +1534,10 @@ namespace libgp4 { // ver 1.29.154
             return o as string;
         }
 
+
+        private void SetProjectFolder() {
+
+        }
 
 
         /// <summary> Check Various Parts Of The Parsed gp4 Parameters To Try And Find Any Possible Errors In The Project Files/Structure.

@@ -23,7 +23,7 @@ namespace libgp4 {
         /// - package <br/>
         /// - chunk_info <br/>
         /// </summary>
-        private XmlNode[] CreateBaseElements(SfoParameters sfo_data, PlaygoData playgo_data, XmlDocument gp4, string passcode, string base_package, string gp4_timestamp) {
+        private XmlNode[] CreateBaseElements(SfoParameters sfo_data, PlaygoParameters playgo_data, XmlDocument gp4, string passcode, string base_package, string gp4_timestamp) {
            
             var psproject = gp4.CreateElement("psproject");
                 psproject.SetAttribute("fmt", "gp4");
@@ -148,7 +148,7 @@ namespace libgp4 {
 
         /// <summary> Create "chunks" Element
         /// </summary>
-        private XmlNode CreateChunksElement(PlaygoData data, XmlDocument gp4) {
+        private XmlNode CreateChunksElement(PlaygoParameters data, XmlDocument gp4) {
             var chunks = gp4.CreateElement("chunks");
 
             for(int chunk_id = 0; chunk_id < data.chunk_count; chunk_id++) {
@@ -166,7 +166,7 @@ namespace libgp4 {
 
         /// <summary> Create "scenarios" Element
         /// </summary>
-        private XmlNode CreateScenariosElement(PlaygoData data, XmlDocument gp4) {
+        private XmlNode CreateScenariosElement(PlaygoParameters data, XmlDocument gp4) {
             var scenarios = gp4.CreateElement("scenarios");
             scenarios.SetAttribute("default_id", $"{data.default_scenario_id}");
 

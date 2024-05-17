@@ -137,6 +137,15 @@ namespace libgp4 {
             extra_files = new string[][] { new string[] { OriginalPath, TargetPath } };
         }
 
+        public void GetSfoParams() {
+
+        }
+
+
+        public void GetPlaygodata() {
+
+        }
+
 
         /// <summary>
         /// Build A New .gp4 Project File For The Provided Gamedata With The Current Options/Settings, And Save It In The Specified OutputDirectory.<br/><br/>
@@ -157,7 +166,7 @@ namespace libgp4 {
             var gp4_timestamp = DateTime.Now.GetDateTimeFormats()[78];
 
             SfoParameters SfoParameters;
-            PlaygoData PlaygoData;
+            PlaygoParameters PlaygoData;
             
             string[] file_paths; // Array Of All Files In The Project Folder (Excluding Blacklisted Files/Directories)
 
@@ -178,7 +187,7 @@ namespace libgp4 {
             | content_id
             | 
             | ========================= | */
-            PlaygoData = new PlaygoData(this, File.OpenRead($@"{gamedata_folder}\sce_sys\playgo-chunk.dat"));
+            PlaygoData = new PlaygoParameters(this, GamedataFolder);
 
 
             /* Parse param.sfo For Required .gp4 Variables.
@@ -193,11 +202,11 @@ namespace libgp4 {
             | content_id (Read Again For Error Checking)
             |
             | ========================= | */
-            SfoParameters = new SfoParameters(this, File.OpenRead($@"{gamedata_folder}\sce_sys\param.sfo"));
+            SfoParameters = new SfoParameters(this, GamedataFolder);
 
 
             // Get The Paths Of All Project Files & Subdirectories In The Given Project Folder. 
-            var file_info = new DirectoryInfo(gamedata_folder).GetFiles(".", SearchOption.AllDirectories); // The Period Is Needed To Search Every Single File/Folder Recursively, I Don't Even Know Why It Works That Way.
+            var file_info = new DirectoryInfo(GamedataFolder).GetFiles(".", SearchOption.AllDirectories); // The Period Is Needed To Search Every Single File/Folder Recursively, I Don't Even Know Why It Works That Way.
             file_paths = new string[file_info.Length];
 
             for(var index = 0; index < file_info.Length; ++index) {
@@ -207,13 +216,13 @@ namespace libgp4 {
 
 
             if(Directory.Exists(GP4OutputPath)) {
-                GP4OutputPath = $@"{GP4OutputPath}\{SfoParameters.title_id}-{((SfoParameters.category == "gd") ? "app" : "patch")}.gp4";
+                GP4OutputPath += $"\\{SfoParameters.title_id}-{((SfoParameters.category == "gd") ? "app" : "patch")}.gp4";
             }
 
 
             // Check The Parsed Data For Any Potential Errors Before Building The .gp4 With It
             if(VerifyIntegrity) {
-                VerifyGP4(gamedata_folder, PlaygoData.playgo_content_id, SfoParameters);
+                VerifyGP4(GamedataFolder, PlaygoData.playgo_content_id, SfoParameters);
             }
 
 
@@ -237,8 +246,8 @@ namespace libgp4 {
                 basic_elements,
                 CreateChunksElement(PlaygoData, gp4),
                 CreateScenariosElement(PlaygoData, gp4),
-                CreateFilesElement(PlaygoData.chunk_count, extra_files, file_paths, gamedata_folder, gp4),
-                CreateRootDirectoryElement(gamedata_folder, gp4)
+                CreateFilesElement(PlaygoData.chunk_count, extra_files, file_paths, GamedataFolder, gp4),
+                CreateRootDirectoryElement(GamedataFolder, gp4)
             );
 
 
