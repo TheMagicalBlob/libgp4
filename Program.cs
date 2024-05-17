@@ -1377,10 +1377,6 @@ namespace libgp4 { // ver 1.29.154
         ////////////////////\\\\\\\\\\\\\\\\\\
         #region Internal Variables
 
-        /// <summary> Main GP4 Structure refrence.
-        ///</summary>
-        private XmlDocument gp4;
-
         /// <summary> Root Gamedata Directory To Be Parsed. (Should Contain At Least An Executable And sce_sys Folder)
         ///</summary>
         private string gamedata_folder;

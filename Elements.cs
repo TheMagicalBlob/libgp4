@@ -194,7 +194,7 @@ namespace libgp4 {
         /// <returns> Time Taken For Build Process </returns>
         private void BuildGp4Elements(XmlDocument gp4_project, XmlNode[] base_elements, XmlNode chunks, XmlNode scenarios, XmlNode files, XmlNode rootdir) {
 
-            gp4_project.AppendChild(gp4.CreateXmlDeclaration("1.1", "utf-8", "yes"));
+            gp4_project.AppendChild(gp4_project.CreateXmlDeclaration("1.1", "utf-8", "yes"));
             gp4_project.AppendChild(base_elements[0]);      // psproject
             
             base_elements[0].AppendChild(base_elements[1]); // volume

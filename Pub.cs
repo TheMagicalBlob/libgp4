@@ -220,7 +220,7 @@ namespace libgp4 {
 
 
             // Create Base .gp4 Elements (Up To Chunk/Scenario Data)
-            gp4 = new XmlDocument();
+            var gp4 = new XmlDocument();
             var basic_elements =
                 CreateBaseElements(
                     SfoParameters,
