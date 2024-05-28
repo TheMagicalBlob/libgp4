@@ -14,3 +14,7 @@ D:\sc\Gp4ProjectBuilder\bin\Debug\libgp4.dll.config
 D:\sc\Gp4ProjectBuilder\bin\Debug\libgp4.dll
 D:\sc\Gp4ProjectBuilder\bin\Debug\libgp4.pdb
 D:\sc\Gp4ProjectBuilder\bin\Debug\libgp4.xml
+D:\sc\libgp4\bin\Debug\libgp4.xml
+D:\sc\libgp4\bin\Debug\libgp4.dll.config
+D:\sc\libgp4\bin\Debug\libgp4.dll
+D:\sc\libgp4\bin\Debug\libgp4.pdb

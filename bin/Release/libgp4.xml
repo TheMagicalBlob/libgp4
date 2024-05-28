@@ -1,0 +1,575 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>libgp4</name>
+    </assembly>
+    <members>
+        <member name="T:libgp4.GP4Creator">
+             <summary> A Small Class For Creating new .gp4 Files From Raw PS4 Gamedata, With A Few Options Related To .pkg Creation.
+            </summary>
+        </member>
+        <member name="M:libgp4.GP4Creator.CreateBaseElements(libgp4.GP4Creator.SfoParser,libgp4.GP4Creator.PlaygoParameters,System.Xml.XmlDocument,System.String,System.String,System.String)">
+            <summary>
+             Create Base .gp4 Elements (Up To The Start Of The chunk_info Node).
+              <br/><br/>
+            - psproject <br/>
+            - volume <br/>
+            - volume_type <br/>
+            - volume_id <br/>
+            - volume_ts <br/>
+            - package <br/>
+            - chunk_info <br/>
+            </summary>
+        </member>
+        <member name="M:libgp4.GP4Creator.CreateFilesElement(System.Int32,System.String[][],System.String[],System.String,System.Xml.XmlDocument)">
+            <summary>
+            Create "files" Element Containing File Destination And Source Paths, Along With Whether To Enable PFS Compression.
+            </summary>
+        </member>
+        <member name="M:libgp4.GP4Creator.CreateRootDirectoryElement(System.String,System.Xml.XmlDocument)">
+            <summary> Create "rootdir" Element Containing The Game's File Structure through A Listing Of Each Directory And Subdirectory
+            </summary>
+        </member>
+        <member name="M:libgp4.GP4Creator.CreateChunksElement(libgp4.GP4Creator.PlaygoParameters,System.Xml.XmlDocument)">
+            <summary> Create "chunks" Element
+            </summary>
+        </member>
+        <member name="M:libgp4.GP4Creator.CreateScenariosElement(libgp4.GP4Creator.PlaygoParameters,System.Xml.XmlDocument)">
+            <summary> Create "scenarios" Element
+            </summary>
+        </member>
+        <member name="M:libgp4.GP4Creator.BuildGp4Elements(System.Xml.XmlDocument,System.Xml.XmlNode[],System.Xml.XmlNode,System.Xml.XmlNode,System.Xml.XmlNode,System.Xml.XmlNode)">
+             <summary> Build .gp4 Structure And Save To File
+            </summary>
+             <returns> Time Taken For Build Process </returns>
+        </member>
+        <member name="M:libgp4.GP4Creator.FileShouldBeExcluded(System.String)">
+            <summary>
+            Check Whether The filepath Containts A Blacklisted String.<br/>
+            Checks Both A Default String[] Of Blacklisted Files, As Well As Any User Blacklisted Files/Folders.
+            </summary>
+            <returns> True If The File in filepath Shouldn't Be Included In The .gp4 </returns>
+        </member>
+        <member name="M:libgp4.GP4Creator.SkipPfsCompressionForFile(System.String)">
+            <summary>
+            Check Whether Or Not The File At filepath Should Have Pfs Compression Enabled.<br/>
+            This Is Almost Certainly Incomplete. Need More Brain Juice.
+            </summary>
+            <returns> True If Pfs Compression Should Be Enabled. </returns>
+        </member>
+        <member name="M:libgp4.GP4Creator.SkipChunkAttributeForFile(System.String)">
+            <summary>
+            Check Whether Or Not The File At filepath Should Have The "chunks" Attribute.<br/>
+            [This Is Almost Certainly Incomplete. Need More Brain Juice.]
+            </summary>
+            <returns> True If The Chunk Attribute Should Be Skipped. </returns>
+        </member>
+        <member name="M:libgp4.GP4Creator.#ctor(System.String)">
+            <summary>
+            Initialize A New Instance Of The GP4Creator Class With Which To Build A New .gp4 Project With Various Settings.<br/>
+            Allows For The Editing Of Various Options Before .gp4 Creation.
+            </summary>
+            
+            <param name="gamedataFolder"> The Folder Containing The Gamedata To Create A .gp4 Project File For. </param>
+        </member>
+        <member name="M:libgp4.GP4Creator.#ctor">
+            <summary>
+            Initialize A New Instance Of The GP4Creator Class With Which To Build A New .gp4 Project With Various Settings.<br/>
+            Allows For The Editing Of Various Options Before .gp4 Creation.
+            <br/><br/> (A Valid GamedataFolder Must Be Set Prior To Creating The .gp4 Project File)
+            </summary>
+        </member>
+        <member name="T:libgp4.GP4Creator.SfoParser">
+             <summary> Class For Reading Parameters Reqired For .gp4 Creation From The param.sfo File (CUSA1234-example\sce_sys\param.sfo)
+            </summary>
+        </member>
+        <member name="M:libgp4.GP4Creator.SfoParser.#ctor(libgp4.GP4Creator,System.String)">
+            <summary>
+            Parse param.sfo For Required .gp4 Variables. <br/> 
+            Sets The Following Values:
+            <br/> <br/>
+            
+            <br/> parameter_labels
+            <br/> app_ver
+            <br/> version
+            <br/> category
+            <br/> title_id
+            <br/> content_id(Read Again For Error Checking)
+            </summary>
+            
+            <param name="Parent">Current GP4 Creator Incstance (For Logging With Current Verbosity Settings 'n Shit)</param>
+            <param name="gamedataFolder"> PS4 Project Folder Containing The sce_sys Subfolder </param>
+            
+            <exception cref="T:System.IO.InvalidDataException"/>
+        </member>
+        <member name="T:libgp4.GP4Creator.PlaygoParameters">
+             <summary> Class For Reading Chunk &amp; Scenario Data Used In .gp4 Creation From The playgo-chunk.dat File (CUSA1234-example\sce_sys\playgo-chunk.dat)
+            </summary>
+        </member>
+        <member name="M:libgp4.GP4Creator.PlaygoParameters.#ctor(libgp4.GP4Creator,System.String)">
+            <summary>
+             Parse param.sfo For Required .gp4 Variables. <br/> 
+             Sets The Following Values:
+             <br/><br/>
+             <br/> chunk_count
+             <br/> chunk_labels
+             <br/> scenario_count
+             <br/> scenario_types
+             <br/> scenario_labels
+             <br/> initial_chunk_count
+             <br/> scenario_chunk_range
+             <br/> default_id
+             <br/> content_id
+            </summary>
+            <param name="Parent"></param>
+            <param name="gamedataFolder"></param>
+            <exception cref="T:System.IO.InvalidDataException"></exception>
+        </member>
+        <member name="M:libgp4.GP4Creator.PlaygoParameters.ConvertbufferToStringArray(System.Byte[],System.String[])">
+            <summary> Parse The Individual Strings From An Array Of Strings, Seperated By A Null Byte. </summary>
+        </member>
+        <member name="F:libgp4.GP4Creator.DefaultBlacklist">
+             <summary> Names Of Files That Are Always To Be Excluded From .gp4 Projects By Default.
+            </summary>
+        </member>
+        <member name="F:libgp4.GP4Creator.extra_files">
+             <summary> List Of Additional Files To Include In The Project, Added by The User.
+            </summary>
+        </member>
+        <member name="M:libgp4.GP4Creator.WLog(System.Object,System.Boolean)">
+             <summary>
+             Output Log Messages To A Custom Output Method (GP4Creator.LoggingMethod(string)), And/Or To The Console If Applicable.<br/><br/>
+             Duplicates Message To Standard Console Output As Well.
+            </summary>
+        </member>
+        <member name="M:libgp4.GP4Creator.DLog(System.Object)">
+             <summary> Console Logging Method.
+            </summary>
+        </member>
+        <member name="M:libgp4.GP4Creator.VerifyGP4(System.String,System.String,libgp4.GP4Creator.SfoParser)">
+             <summary> Check Various Parts Of The Parsed gp4 Parameters To Try And Find Any Possible Errors In The Project Files/Structure.
+            </summary>
+        </member>
+        <member name="P:libgp4.GP4Creator.SfoParams">
+            <summary>
+            An Array Of Parameters Parsed From The param.sfo File In The Application/Patch's System Folder (sce_sys\param.sfo)
+            </summary>
+        </member>
+        <member name="P:libgp4.GP4Creator.PlaygoData">
+            <summary>
+            An Array Of Parameters Parsed From The playgo-chunk.dat File In The Application/Patch's System Folder (sce_sys\playgo-chunk.dat)
+            </summary>
+        </member>
+        <member name="P:libgp4.GP4Creator.GamedataFolder">
+             <summary> Root Path Of The PS4 Package Project The .gp4 Is To Be Created For. (Should Contain At Least An Executable And sce_sys Folder)
+            </summary>
+        </member>
+        <member name="F:libgp4.GP4Creator.Keystone">
+            <summary>
+            Include The Keystone File Used For Savedata Creation/Usage In The .gp4's File Listing.
+            <br/> Including The Original Is Recommended To Maintain Support For Savedata Created By The Original Application.
+            <br/><br/> (True By Default)
+            </summary>
+        </member>
+        <member name="F:libgp4.GP4Creator.Passcode">
+            <summary>
+            The 32-bit Key Used To Encrypt The .pkg. Required For Extraction With orbis-pub-chk.
+            <br/><br/> (No Effect On Dumping)
+            </summary>
+        </member>
+        <member name="F:libgp4.GP4Creator.BlacklistedFilesOrFolders">
+            <summary>
+            An Array Containing The Names Of Any Files Or Folders That Are To Be Excluded From The .gp4 Project.
+            </summary>
+        </member>
+        <member name="F:libgp4.GP4Creator.BasePkgPath">
+            <summary>
+            Path To The Base Application Package The New Package Is To Be Married To.
+            </summary>
+        </member>
+        <member name="F:libgp4.GP4Creator.AbsoluteFilePaths">
+            <summary>
+            Set Whether Or Not To Use Absolute Or Relative Pathnames For The .gp4 Project's File Listing 
+            <br/><br/> (True By Default)
+            </summary>
+        </member>
+        <member name="P:libgp4.GP4Creator.AppTitle">
+            <summary>
+            The Application's Default Name, Read From The param.sfo In The Provided Gamedata Folder.
+            </summary>
+        </member>
+        <member name="P:libgp4.GP4Creator.AppTitles">
+            <summary>
+            The Various Titles Of The Application, If There Are Titles Passed The Default (e.g. Title_XX). Left null Otherwise.
+            </summary>
+        </member>
+        <member name="P:libgp4.GP4Creator.AppType">
+            <summary>
+            The Application's Intended Package Type.
+            </summary>
+        </member>
+        <member name="P:libgp4.GP4Creator.TargetAppVer">
+            <summary>
+            Target Application Version.
+            </summary>
+        </member>
+        <member name="P:libgp4.GP4Creator.SfoCreationDate">
+            <summary>
+            Creation Date Of The param.sfo File.
+            </summary>
+        </member>
+        <member name="P:libgp4.GP4Creator.SdkVersion">
+            <summary>
+            The PS4/Orbis SDK Version Of The Application.
+            </summary>
+        </member>
+        <member name="F:libgp4.GP4Creator.LoggingMethod">
+            <summary>
+            Optional Method To Use For Logging. [Function(string s)]
+            </summary>
+        </member>
+        <member name="F:libgp4.GP4Creator.VerboseLogging">
+            <summary>
+            Set GP4 Log Verbosity.
+            </summary>
+        </member>
+        <member name="M:libgp4.GP4Creator.CreateGP4(System.String,System.Boolean)">
+            <summary>
+            Build A New .gp4 Project File For The Provided Gamedata With The Current Options/Settings, And Save It In The Specified OutputDirectory.<br/><br/>
+            First, Parses gamedata_folder\sce_sys\playgo-chunk.dat &amp; gamedata_folder\sce_sys\param.sfo For Parameters Required For .gp4 Creation,<br/>
+            Then Saves All File/Subdirectory Paths In The Gamedata Folder
+            </summary>
+            
+            <param name="GP4OutputPath"> Folder In Which To Place The Newly Build .gp4 Project File. </param>
+            <param name="VerifyIntegrity"> Set Whether Or Not To Abort The Creation Process If An Error Is Found That Would Cause .pkg Creation To Fail, Or Simply Log It To The Standard Console Output And/Or LogOutput(string) Action. </param>
+        </member>
+        <member name="T:libgp4.GP4Reader">
+             <summary>
+             Small Class For Reading Data From .gp4 Projects.<br/><br/>
+             Usage:<br/>
+              1. Create A New Instance To Parse And Return All Relevant Data From The .gp4 File.<br/><br/>
+              2. Use The A Static Method To Read A Specific Attribute From The .gp4, Rather Than Reading Them All To Grab One/A Couple Things.
+            </summary>
+        </member>
+        <member name="M:libgp4.GP4Reader.#ctor(System.String)">
+            <summary>
+             Create A New Instance Of The GP4Reader Class With A Given .gp4 File.<br/>
+             Parses The Given Project File For All Relevant .gp4 Data. Also Checks For Possible Errors.<br/><br/>
+             (Skips Passed The First Line To Avoid A Version Conflict, As The XmlReader Class Doesn't Like 1.1)
+            </summary>
+            
+            <param name="GP4Path"> The Absolute Path To The .gp4 Project File </param>
+        </member>
+        <member name="T:libgp4.GP4Reader.Scenario">
+             <summary>
+              Small Struct For Scenario Node Attributes.
+              <br/><br/>
+              Members:
+              <br/> [string] Type
+              <br/> [string] Label
+              <br/> [int] Id
+              <br/> [int] InitialChunkCount
+              <br/> [string] ChunkRange
+            </summary>
+        </member>
+        <member name="M:libgp4.GP4Reader.Scenario.#ctor(System.Xml.XmlReader)">
+            <summary>
+            Create A New Scenario Instance From A .gp4 Node
+            </summary>
+            <param name="gp4Stream"> The XmlReader Instance With The Scneario Node </param>
+        </member>
+        <member name="F:libgp4.GP4Reader.Scenario.Type">
+            <summary>
+             The Type/Gamemode Of The Selected Game Scenario. (E.G. sp / mp)
+            </summary>
+        </member>
+        <member name="F:libgp4.GP4Reader.Scenario.Label">
+            <summary>
+             The Label/Name Of The Selected Game Scenario.
+            </summary>
+        </member>
+        <member name="F:libgp4.GP4Reader.Scenario.Id">
+            <summary>
+             Id/Zero-Based-Index Of The Selected Game Scenario.
+            </summary>
+        </member>
+        <member name="F:libgp4.GP4Reader.Scenario.InitialChunkCount">
+            <summary>
+             The Initial Chunk Count For The Selected Game Scenario.
+            </summary>
+        </member>
+        <member name="F:libgp4.GP4Reader.Scenario.ChunkRange">
+             <summary>
+             The Chunk Range For The Selected Game Scenario.
+             <br/><br/>
+             NOTE: No Idea If My Own Tool Creates This Attribute Properly,
+             <br/>But Even If It Doesn't, It Won't Really Matter Unless You're Trying To Burn The Created .pkg To A Disc.
+             </summary>
+        </member>
+        <member name="F:libgp4.GP4Reader.project_file_blacklist">
+             <summary>
+             Files That Aren't Meant To Be Added To A .pkg.
+            </summary>
+        </member>
+        <member name="F:libgp4.GP4Reader.assertion_base">
+            <summary> Default Assertion Message Text For Formatting. </summary>
+        </member>
+        <member name="F:libgp4.GP4Reader.use_output_channel">
+             <summary> Catch DLog Errors, Disabling Whichever Output Threw The Error.
+            </summary>
+        </member>
+        <member name="F:libgp4.GP4Reader.sfo_content_id">
+             <summary> The Content Id In The Named File. (Redundancy To Hopefully Catch A Mismatched Id)
+            </summary>
+        </member>
+        <member name="F:libgp4.GP4Reader.playgo_content_id">
+             <summary> The Content Id In The Named File. (Redundancy To Hopefully Catch A Mismatched Id)
+            </summary>
+        </member>
+        <member name="M:libgp4.GP4Reader.DLog(System.Object)">
+            <summary> Console Logging Method. </summary>
+        </member>
+        <member name="M:libgp4.GP4Reader.ELog(System.String,System.String)">
+            <summary> Error Logging Method. </summary>
+        </member>
+        <member name="M:libgp4.GP4Reader.CheckGP4Path(System.String)">
+             <summary>
+             Check Whether Or Not The .gp4 Path Given Points To A Valid File.<br/><br/>
+             Checks It As Both An Absolute Path, And As A Relative Path.
+             </summary>
+            
+             <param name="GP4Path">
+             An Absolute Or Relative Path To The .gp4 File.
+             </param>
+             
+             <returns>
+             The GP4Path, Either Unmodified If Valid On It's Own, Or With The Current Directory Prepended If It's A Valid Relative Path.<br/>
+             string.Empty Otherwise
+             </returns>
+        </member>
+        <member name="M:libgp4.GP4Reader.GetAttribute(System.String,System.String,System.String)">
+             <summary> Open A .gp4 at The Specified Path and Read The The Value Of "AttributeName" At The Given Parent Node. </summary>
+             
+             <param name="GP4Path"> The Absolute Or Relative Path To The .gp4 File. </param>
+             <param name="NodeName"> Attribute's Parent Node. </param>
+             <param name="AttributeName"> The Attribute To Read And Return. </param>
+             <returns> The Value Of The Specified Attribute If Successfully Found; string.Empty Otherwise.
+            </returns>
+        </member>
+        <member name="M:libgp4.GP4Reader.GetAttributes(System.String,System.String,System.String)">
+             <summary> Open A .gp4 at The Specified GP4Path and Read All Nodes With AttributeName. </summary>
+             
+             <param name="GP4Path"> An Absolute Or Relative Path To The .gp4 File</param>
+             <param name="NodeName"> Attribute's Parent Node To Cgeck Every Instance Of </param>
+             <param name="AttributeName"> The Attribute To Read And Add To The List </param>
+             
+             <returns> A String Array Containing The Value Of Each Instance Of AttributeName, Or An Empty String Array Otherwise.
+            </returns>
+        </member>
+        <member name="M:libgp4.GP4Reader.GetInnerXMLData(System.String,System.String)">
+             <summary> Open A .gp4 at The Specified GP4Path and Read The Inner Xml Contents Of The Specified Node. </summary>
+             
+             <param name="GP4Path"> An Absolute Or Relative Path To The .gp4 File. </param>
+             <param name="NodeName"> Attribute's Parent Node To Cgeck Every Instance Of. </param>
+             
+             <returns> The Inner Xml Data Of the Given Node If It's Successfully Found; string.Empty Otherwise.
+            </returns>
+        </member>
+        <member name="M:libgp4.GP4Reader.ParseGP4(System.Xml.XmlReader)">
+            <summary>
+            Parse Each .gp4 Node For Relevant PS4 .gp4 Project Data.
+            <br/><br/>
+            Throws An InvalidDataException If Invalid Attribute Values Are Found.<br/>
+            (For Example: If Invalid Files Have Been Added To The .gp4's File Listing, Or There Are Conflicting Variables For<br/>
+            The Package Type Because Of gengp4.exe Being A Pile Of Arse.)
+            <br/><br/>
+            Variables Prepended With @ Are Only Read For .gp4 Integrity Verification
+            </summary>
+            
+            <exception cref="T:System.IO.InvalidDataException"/>
+        </member>
+        <member name="P:libgp4.GP4Reader.Timestamp">
+            <summary>
+            Volume Timestamp / .gp4 Creation Time <br/><br/>
+            Note:<br/>gengp4.exe Does Not Record The Time, Instead Only The Current YY/MM/DD, And 00:00:00 <br/>
+            </summary>
+        </member>
+        <member name="P:libgp4.GP4Reader.BaseAppPkgPath">
+            <summary>
+            (Applies To Patch Packages Only)
+            <br/><br/>
+            
+            An Absolute Path To The Base Game Package The Patch .pkg's Going To Be Married And Installed To.<br/>
+            </summary>
+        </member>
+        <member name="P:libgp4.GP4Reader.Passcode">
+             <summary> Password To Be Used In Pkg Creation
+            </summary>
+        </member>
+        <member name="P:libgp4.GP4Reader.IsPatchProject">
+             <summary> True If The .gp4 Project Is For A Patch .pkg, False Otherwise.
+            </summary>
+        </member>
+        <member name="P:libgp4.GP4Reader.ContentID">
+            <summary>
+            Content ID Of The .gp4 Project's Game
+            <br/>
+            (Title &amp; Title ID)
+            </summary>
+        </member>
+        <member name="P:libgp4.GP4Reader.Files">
+             <summary> Array Of All Files Listed In The .gp4 Project
+            </summary>
+        </member>
+        <member name="P:libgp4.GP4Reader.SubfolderNames">
+             <summary> Array Containing The Names Of Each Folder/Subfolder Within The Project Folder
+            </summary>
+        </member>
+        <member name="P:libgp4.GP4Reader.Subfolders">
+             <summary> Array Containing The Full Path For Each Folder/Subfolder Within The Project Folder
+            </summary>
+        </member>
+        <member name="P:libgp4.GP4Reader.Chunks">
+             <summary> Array Containing Chunk Data For The Selected .gp4 Project File
+            </summary>
+        </member>
+        <member name="P:libgp4.GP4Reader.ChunkCount">
+            <summary>
+            chunk_count Attribute From The Chunk Info Node.
+            </summary>
+        </member>
+        <member name="P:libgp4.GP4Reader.Scenarios">
+            <summary> Array Of Scenario Data For The .gp4 Project.
+            </summary>
+        </member>
+        <member name="P:libgp4.GP4Reader.ScenarioCount">
+            <summary>
+            scenario_count Attribute From The Chunk Info Node.
+            </summary>
+        </member>
+        <member name="P:libgp4.GP4Reader.DefaultScenarioId">
+            <summary> The Default Scenario ID Of The .gp4 Project.
+            </summary>
+        </member>
+        <member name="F:libgp4.GP4Reader.format">
+            <summary> Varible Used Only In .gp4 Integrity Verification.
+            </summary>
+        </member>
+        <member name="F:libgp4.GP4Reader.volume_type">
+            <summary> Varible Used Only In .gp4 Integrity Verification.
+            </summary>
+        </member>
+        <member name="F:libgp4.GP4Reader.volume_id">
+            <summary> Varible Used Only In .gp4 Integrity Verification.
+            </summary>
+        </member>
+        <member name="F:libgp4.GP4Reader.storage_type">
+            <summary> Varible Used Only In .gp4 Integrity Verification.
+            </summary>
+        </member>
+        <member name="F:libgp4.GP4Reader.app_type">
+            <summary> Varible Used Only In .gp4 Integrity Verification.
+            </summary>
+        </member>
+        <member name="F:libgp4.GP4Reader.version">
+            <summary> Varible Used Only In .gp4 Integrity Verification.
+            </summary>
+        </member>
+        <member name="M:libgp4.GP4Reader.VerifyGP4">
+             <summary> Check Various Parts Of The .gp4 To Try And Find Any Possible Errors In The Project File.
+            </summary>
+        </member>
+        <member name="M:libgp4.GP4Reader.IsPatchPackage(System.String)">
+            <summary>
+            Check Whether The .gp4 Project File Is A Patch, Or An Application Project.
+            </summary>
+            <param name="GP4Path"> Absolute Path To The .gp4 File Being Checked </param>
+            <returns> True If The Volume Type Is pkg_ps4_patch. </returns>
+        </member>
+        <member name="M:libgp4.GP4Reader.GetTimestamp(System.String)">
+            <param name="GP4Path"> Absolute Path To The .gp4 File Being Checked </param>
+            <returns>  </returns>
+        </member>
+        <member name="M:libgp4.GP4Reader.GetPkgPasscode(System.String)">
+             <param name="GP4Path"> Absolute Path To The .gp4 File Being Checked </param>
+             <returns> The Passcode The .pkg Will Be Encrypted With (Pointless On fpkg's, Does Not Prevent Dumping, Only orbis-pub-chk extraction)
+            </returns>
+        </member>
+        <member name="M:libgp4.GP4Reader.GetContentId(System.String)">
+             <param name="GP4Path"> Absolute Path To The .gp4 File Being Checked </param>
+             <returns> The Content Id of The Current Application/Patch Project.
+            </returns>
+        </member>
+        <member name="M:libgp4.GP4Reader.GetBasePkgPath(System.String)">
+             <param name="GP4Path"> Absolute Path To The .gp4 File Being Checked </param>
+             <returns> The Path Of The Base Game Package The .gp4 Project File's Patch Is To Be Married With
+            </returns>
+        </member>
+        <member name="M:libgp4.GP4Reader.GetChunkCount(System.String)">
+             <param name="GP4Path"> Absolute Path To The .gp4 File Being Checked </param>
+             <returns> The Amount Of Chunks In The Application/Patch Project.
+            </returns>
+        </member>
+        <member name="M:libgp4.GP4Reader.GetDefaultScenarioId(System.String)">
+             <param name="GP4Path"> Absolute Path To The .gp4 File Being Checked </param>
+             <returns> The Id/Index Of The Default Game Scenario For The Application/Patch Project.
+            </returns>
+        </member>
+        <member name="M:libgp4.GP4Reader.GetScenarioCount(System.String)">
+             <param name="GP4Path"> Absolute Path To The .gp4 File Being Checked </param>
+             <returns> The Amount Of Scenarios The Application/Patch Project.
+            </returns>
+        </member>
+        <member name="M:libgp4.GP4Reader.GetChunkListing(System.String)">
+             <param name="GP4Path"> Absolute Path To The .gp4 File Being Checked </param>
+             <returns> A String Array Containing Full Paths To All Game Chunks Listed In The .gp4 Project
+            </returns>
+        </member>
+        <member name="M:libgp4.GP4Reader.GetScenarioListing(System.String)">
+             <param name="GP4Path"> Absolute Path To The .gp4 File Being Checked </param>
+             <returns> An Array Of Scenarios Read From The Application/Patch Project.
+            </returns>
+        </member>
+        <member name="M:libgp4.GP4Reader.GetFileListing(System.String)">
+             <param name="GP4Path"> Absolute Path To The .gp4 File Being Checked </param>
+             <returns> A String Array Containing Full Paths To All Project Files Listed In The .gp4 Project
+            </returns>
+        </member>
+        <member name="M:libgp4.GP4Reader.GetFolderNames(System.String)">
+             <summary>
+             Read And Return the Names Of All Subfolders Located Wiithin The Project Folder
+             </summary>
+             <param name="GP4Path"> Absolute Path To The .gp4 File Being Checked </param>
+             <returns> A String Array Containing Just The Names Of All Subfolders Listed In The .gp4 Project
+            </returns>
+        </member>
+        <member name="M:libgp4.GP4Reader.GetFolderListing(System.String)">
+             <summary>
+             Read And Return All Subfolders Located Wiithin The Project Folder
+             </summary>
+             <param name="GP4Path"> Absolute Path To The .gp4 File Being Checked </param>
+             <returns> A String Array Containing Full Paths To All Subfolders Listed In The .gp4 Project
+            </returns>
+        </member>
+        <member name="M:libgp4.GP4Reader.VerifyGP4(System.String)">
+             <summary> Check Various Parts Of The .gp4 To Try And Find Any Possible Errors In The Project File.
+            </summary>
+        </member>
+        <member name="T:libgp4.Properties.Resources">
+            <summary>
+              A strongly-typed resource class, for looking up localized strings, etc.
+            </summary>
+        </member>
+        <member name="P:libgp4.Properties.Resources.ResourceManager">
+            <summary>
+              Returns the cached ResourceManager instance used by this class.
+            </summary>
+        </member>
+        <member name="P:libgp4.Properties.Resources.Culture">
+            <summary>
+              Overrides the current thread's CurrentUICulture property for all
+              resource lookups using this strongly typed resource class.
+            </summary>
+        </member>
+    </members>
+</doc>

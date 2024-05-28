@@ -117,6 +117,8 @@ namespace libgp4 {
         /////////////////\\\\\\\\\\\\\\\\\
         #region User Functions
 
+        // TODO: TEST THESE TWO THINGS
+        /* 
         /// <summary>
         /// Add External Files To The Project's File Listing (wip, this wouldn't work the way it is lol)
         /// </summary>
@@ -160,7 +162,7 @@ namespace libgp4 {
 
             extra_files = new string[][] { new string[] { OriginalPath, TargetPath } };
         }
-
+        */
 
         /// <summary>
         /// Build A New .gp4 Project File For The Provided Gamedata With The Current Options/Settings, And Save It In The Specified OutputDirectory.<br/><br/>

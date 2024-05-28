@@ -7,3 +7,4 @@ D:\sc\libgp4\obj\Release\libgp4.csproj.CoreCompileInputs.cache
 D:\sc\libgp4\obj\Release\libgp4.dll
 D:\sc\Gp4ProjectBuilder\bin\Debug\libgp4.dll.config
 D:\sc\Gp4ProjectBuilder\bin\Debug\libgp4.dll
+D:\sc\libgp4\bin\Release\libgp4.xml
