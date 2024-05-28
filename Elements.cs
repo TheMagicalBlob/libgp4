@@ -1,5 +1,4 @@
 ﻿using System.IO;
-using System.Linq;
 using System.Xml;
 
 namespace libgp4 {
@@ -23,34 +22,34 @@ namespace libgp4 {
         /// - package <br/>
         /// - chunk_info <br/>
         /// </summary>
-        private XmlNode[] CreateBaseElements(SfoParameters sfo_data, PlaygoParameters playgo_data, XmlDocument gp4, string passcode, string base_package, string gp4_timestamp) {
-           
+        private XmlNode[] CreateBaseElements(SfoParser sfo_data, PlaygoParameters playgo_data, XmlDocument gp4, string passcode, string base_package, string gp4_timestamp) {
+
             var psproject = gp4.CreateElement("psproject");
-                psproject.SetAttribute("fmt", "gp4");
-                psproject.SetAttribute("version", "1000");
+            psproject.SetAttribute("fmt", "gp4");
+            psproject.SetAttribute("version", "1000");
 
 
             var volume = gp4.CreateElement("volume");
-            
-                var volume_type = gp4.CreateElement("volume_type");
-                volume_type.InnerText = $"pkg_{((sfo_data.category == "gd") ? "ps4_app" : "ps4_patch")}";
 
-                var volume_id = gp4.CreateElement("volume_id");
-                volume_id.InnerText = "PS4VOLUME";
+            var volume_type = gp4.CreateElement("volume_type");
+            volume_type.InnerText = $"pkg_{((sfo_data.category == "gd") ? "ps4_app" : "ps4_patch")}";
 
-                var volume_ts = gp4.CreateElement("volume_ts");
-                volume_ts.InnerText = gp4_timestamp;
+            var volume_id = gp4.CreateElement("volume_id");
+            volume_id.InnerText = "PS4VOLUME";
+
+            var volume_ts = gp4.CreateElement("volume_ts");
+            volume_ts.InnerText = gp4_timestamp;
 
 
             var package = gp4.CreateElement("package");
-                package.SetAttribute("content_id", sfo_data.content_id);
-                package.SetAttribute("passcode", passcode);
-                package.SetAttribute("storage_type", ((sfo_data.category == "gp") ? "digital25" : "digital50"));
-                package.SetAttribute("app_type", "full");
+            package.SetAttribute("content_id", sfo_data.content_id);
+            package.SetAttribute("passcode", passcode);
+            package.SetAttribute("storage_type", ((sfo_data.category == "gp") ? "digital25" : "digital50"));
+            package.SetAttribute("app_type", "full");
 
 
             if(sfo_data.category == "gp")
-                package.SetAttribute("app_path", base_package ?? $"{sfo_data.content_id}-A{sfo_data.app_ver}-V{sfo_data.version}.pkg");
+                package.SetAttribute("app_path", base_package ?? $"{sfo_data.content_id}-A{sfo_data.app_ver.Replace(".", "")}-V{sfo_data.version.Replace(".", "")}.pkg");
 #if Log
             else if(sfo_data.category == "gd" && base_package != null) {
                 var str = $"WARNING: A Base Game Package Path Was Given, But The Package Category Was Set To Full Game.\n(Base Package: {base_package})";
@@ -60,8 +59,8 @@ namespace libgp4 {
 #endif
 
             var chunk_info = gp4.CreateElement("chunk_info");
-                chunk_info.SetAttribute("chunk_count", $"{playgo_data.chunk_count}");
-                chunk_info.SetAttribute("scenario_count", $"{playgo_data.scenario_count}");
+            chunk_info.SetAttribute("chunk_count", $"{playgo_data.chunk_count}");
+            chunk_info.SetAttribute("scenario_count", $"{playgo_data.scenario_count}");
 
             return new XmlNode[] { psproject, volume, volume_type, volume_id, volume_ts, package, chunk_info };
         }
@@ -196,7 +195,7 @@ namespace libgp4 {
 
             gp4_project.AppendChild(gp4_project.CreateXmlDeclaration("1.1", "utf-8", "yes"));
             gp4_project.AppendChild(base_elements[0]);      // psproject
-            
+
             base_elements[0].AppendChild(base_elements[1]); // volume
             base_elements[1].AppendChild(base_elements[2]); // volume_type
             base_elements[1].AppendChild(base_elements[3]); // volume_id
@@ -219,16 +218,15 @@ namespace libgp4 {
         /// </summary>
         /// <returns> True If The File in filepath Shouldn't Be Included In The .gp4 </returns>
         private bool FileShouldBeExcluded(string filepath) {
-            string filename = string.Empty;
-
-            if(filepath.Contains('.'))
-                filename = filepath.Remove(filepath.LastIndexOf(".")).Substring(filepath.LastIndexOf('\\') + 1); // Tf Am I Doing Here?
-
+            if(filepath.Contains("sce_sys") && filepath.Contains(".dds")) {
+                WLog("Ignoring .dds In System Folder.", true);
+                return true;
+            }
 
             foreach(var blacklisted_file_or_folder in DefaultBlacklist)
                 if(filepath.Contains(blacklisted_file_or_folder)) {
 #if Log
-                    DLog($"Ignoring: {filepath}");
+                    WLog($"Ignoring: {filepath}", true);
 #endif
                     return true;
                 }
@@ -237,7 +235,7 @@ namespace libgp4 {
                 foreach(var blacklisted_file_or_folder in BlacklistedFilesOrFolders) {
                     if(filepath.Contains(blacklisted_file_or_folder)) {
 #if Log
-                        DLog($"User Ignoring: {filepath}");
+                        WLog($"User Ignoring: {filepath}", true);
 #endif
                         return true;
                     }
@@ -252,18 +250,17 @@ namespace libgp4 {
         /// </summary>
         /// <returns> True If Pfs Compression Should Be Enabled. </returns>
         private bool SkipPfsCompressionForFile(string filepath) {
-            var Blacklist = new string[] {
+            // TOTO: Figure Out How To Dynamically
+            foreach(var file in new string[] {
                 "sce_sys",
                 "sce_module",
                 ".elf",
                 ".bin",
                 ".prx",
                 ".dll"
-            };
-
-            foreach(var file in Blacklist)
-                if(filepath.Contains(file))
-                    return true;
+            })
+            if(filepath.Contains(file))
+                return true;
 
             return false;
         }
@@ -275,16 +272,14 @@ namespace libgp4 {
         /// </summary>
         /// <returns> True If The Chunk Attribute Should Be Skipped. </returns>
         private bool SkipChunkAttributeForFile(string filepath) {
-            var Blacklist = new string[] {
+            foreach(var filter in new string[] {
                 "keystone",
                 "sce_sys",
                 "sce_module",
                 ".bin"
-            };
-
-            foreach(var filter in Blacklist)
-                if(filepath.Contains(filter))
-                    return true;
+            })
+            if(filepath.Contains(filter))
+                return true;
 
             return false;
         }
