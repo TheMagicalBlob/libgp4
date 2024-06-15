@@ -18,3 +18,13 @@ D:\sc\libgp4\bin\Debug\libgp4.xml
 D:\sc\libgp4\bin\Debug\libgp4.dll.config
 D:\sc\libgp4\bin\Debug\libgp4.dll
 D:\sc\libgp4\bin\Debug\libgp4.pdb
+D:\HOME\sc\libgp4\bin\Debug\libgp4.dll.config
+D:\HOME\sc\libgp4\bin\Debug\libgp4.xml
+D:\HOME\sc\libgp4\bin\Debug\libgp4.dll
+D:\HOME\sc\libgp4\bin\Debug\libgp4.pdb
+D:\HOME\sc\libgp4\obj\Debug\libgp4.csproj.AssemblyReference.cache
+D:\HOME\sc\libgp4\obj\Debug\libgp4.Properties.Resources.resources
+D:\HOME\sc\libgp4\obj\Debug\libgp4.csproj.GenerateResource.cache
+D:\HOME\sc\libgp4\obj\Debug\libgp4.csproj.CoreCompileInputs.cache
+D:\HOME\sc\libgp4\obj\Debug\libgp4.dll
+D:\HOME\sc\libgp4\obj\Debug\libgp4.pdb

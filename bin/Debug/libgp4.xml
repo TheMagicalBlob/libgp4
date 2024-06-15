@@ -182,7 +182,7 @@
             An Array Containing The Names Of Any Files Or Folders That Are To Be Excluded From The .gp4 Project.
             </summary>
         </member>
-        <member name="F:libgp4.GP4Creator.BasePkgPath">
+        <member name="P:libgp4.GP4Creator.BasePackagePath">
             <summary>
             Path To The Base Application Package The New Package Is To Be Married To.
             </summary>
